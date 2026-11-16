@@ -3,8 +3,8 @@
 The website for **Aether & Allure**, Sigrid Halvorsen's crafting shop in
 FINAL FANTASY XIV, at [aetherandallure.com](https://aetherandallure.com).
 It's written in Rust and compiled to WebAssembly with [Leptos](https://leptos.dev),
-built with [Trunk](https://trunkrs.dev), and runs in a Docker container on your
-own server. The code is kept on GitHub.
+built with [Trunk](https://trunkrs.dev), and runs in a Docker container on a
+private server. The code is kept on GitHub.
 
 © 2026 Jason Telford. Released under the [BSD 3-Clause License](LICENSE).
 
