@@ -1,0 +1,12 @@
+# Build output
+/target
+/dist
+
+# Secrets and server settings: .env holds them and must never be committed.
+# Only the template, .env.example, is tracked.
+.env
+.env.*
+!.env.example
+
+# Server-specific Docker Compose changes
+compose.override.yaml

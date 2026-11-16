@@ -1,0 +1,8 @@
+[build]
+target = "index.html"
+dist = "dist"
+# Relative links, so the built site works from any folder or domain.
+public_url = "./"
+
+[serve]
+port = 8080

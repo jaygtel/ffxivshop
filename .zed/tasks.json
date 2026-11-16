@@ -1,0 +1,51 @@
+// Tasks for this project: run them with "task: spawn" (cmd-shift-r on macOS,
+// alt-shift-t on Linux and Windows). In the dev container they run inside
+// it, with its tools.
+[
+  {
+    "label": "trunk serve",
+    // Builds the site and serves it at http://localhost:8080, rebuilding and
+    // reloading the page whenever you save. Stop it with ctrl-c.
+    "command": "trunk serve",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "save": "all"
+  },
+  {
+    "label": "trunk build --release",
+    // The finished site, in dist/, ready to upload.
+    "command": "trunk build --release",
+    "save": "all"
+  },
+  {
+    "label": "cargo test",
+    "command": "cargo test --workspace",
+    "save": "all"
+  },
+  {
+    "label": "cargo clippy (site, wasm32)",
+    // Lints the site for the target it actually ships to.
+    "command": "cargo clippy -p ffxiv-shop --target wasm32-unknown-unknown",
+    "save": "all"
+  },
+  {
+    "label": "shop-tools: fill shop.toml",
+    // Looks up the Eorzea Database link, icon, item level and jobs for every
+    // item in shop.toml that has a name.
+    "command": "cargo run -q -p shop-tools -- fill",
+    "save": "all"
+  },
+  {
+    "label": "shop-tools: find selected item",
+    // Select an item name in the editor, then run this.
+    "command": "cargo",
+    "args": ["run", "-q", "-p", "shop-tools", "--", "find", "$ZED_SELECTED_TEXT"]
+  },
+  {
+    "label": "leptosfmt: format view! macros",
+    // Formats Leptos view! macros, then the rest with rustfmt.
+    "command": "leptosfmt src && cargo fmt --all",
+    "save": "all"
+  }
+]

@@ -1,0 +1,47 @@
+# Traefik dynamic configuration for Aether & Allure (file provider).
+#
+# Copy this file into the folder your Traefik file provider watches, e.g.
+#   cp deploy/traefik/aether-allure.yml /path/to/traefik/dynamic/
+# Traefik picks it up without a restart if the provider has `watch: true`.
+#
+# The site container joins the traefik_proxy network (see compose.yaml) and
+# publishes no ports on the server, so Traefik reaches it by name through
+# Docker's DNS.
+#
+# HTTPS: both routers use the `websecure` entry point with `tls: {}`, so Traefik
+# serves the certificate it already has there (your Cloudflare Origin
+# certificate). There is no certResolver, so no certificate is ever requested
+# from Let's Encrypt or anyone else.
+
+http:
+  routers:
+    aether-allure:
+      rule: "Host(`aetherandallure.com`)"
+      entryPoints:
+        - websecure
+      service: aether-allure
+      tls: {}
+
+    # www.aetherandallure.com redirects to aetherandallure.com.
+    aether-allure-www:
+      rule: "Host(`www.aetherandallure.com`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - aether-allure-www-redirect
+      service: aether-allure
+      tls: {}
+
+  middlewares:
+    aether-allure-www-redirect:
+      redirectRegex:
+        regex: '^https?://www\.aetherandallure\.com/(.*)'
+        replacement: 'https://aetherandallure.com/${1}'
+        permanent: true
+
+  services:
+    aether-allure:
+      loadBalancer:
+        servers:
+          # The site container on the traefik_proxy network.
+          - url: "http://aether-allure-site:8080"

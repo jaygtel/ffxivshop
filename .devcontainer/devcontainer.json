@@ -1,0 +1,70 @@
+// Dev container for Aether & Allure.
+//
+// Open the project in Zed and choose "Open in Container" (or run
+// "Project: Open Remote" and pick the dev container). Zed builds the `dev`
+// stage of the Dockerfile in the project root, starts it, and runs its
+// terminals, tasks and rust-analyzer inside it. Zed doesn't rebuild
+// automatically after you change this file or the Dockerfile: stop the
+// container (docker kill <container>) and reopen the project.
+{
+  "name": "Aether & Allure",
+  "build": {
+    // The same Dockerfile builds the server image; `dev` is the stage with
+    // the development tools.
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev"
+  },
+
+  "remoteUser": "dev",
+  // Reaps the processes cargo and trunk leave behind.
+  "init": true,
+
+  // `trunk serve` listens on 8080. Zed publishes this port on your computer,
+  // so open http://localhost:8080 once the "trunk serve" task is running.
+  // If 8080 is already taken, change it here and set TRUNK_SERVE_PORT below.
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": { "label": "Trunk dev server", "onAutoForward": "notify" }
+  },
+  "containerEnv": {
+    "TRUNK_SERVE_PORT": "8080"
+  },
+
+  "mounts": [
+    // Build output: quicker than the shared project folder on macOS and
+    // Windows, and kept when the container is rebuilt.
+    {
+      "source": "aether-allure-target-${devcontainerId}",
+      "target": "/home/dev/.cache/cargo-target",
+      "type": "volume"
+    },
+    // Downloaded crates, so a rebuilt container doesn't fetch them again.
+    {
+      "source": "aether-allure-cargo-registry-${devcontainerId}",
+      "target": "/usr/local/cargo/registry",
+      "type": "volume"
+    },
+    // Your git name, email and other settings made with `git config --global`.
+    {
+      "source": "aether-allure-git-config-${devcontainerId}",
+      "target": "/home/dev/.config/git",
+      "type": "volume"
+    }
+  ],
+
+  // Runs once, inside the container, after it's created.
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "zed": {
+      // Syntax highlighting for shop.toml, the Dockerfile and index.html.
+      // Rust and CSS support are built into Zed.
+      "extensions": ["toml", "dockerfile", "html"]
+    },
+    // The same container works in VS Code too.
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer", "tamasfe.even-better-toml"]
+    }
+  }
+}

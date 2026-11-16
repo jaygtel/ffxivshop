@@ -1,0 +1,24 @@
+// Zed settings for this project. They apply inside the dev container, where
+// the tools below are installed, and also if you open the folder without it.
+{
+  "lsp": {
+    "rust-analyzer": {
+      // Zed uses the rust-analyzer on PATH (the dev container installs the one
+      // that matches rust-toolchain.toml) before downloading its own.
+      "initialization_options": {
+        // Show clippy's warnings as well as compiler errors.
+        "check": { "command": "clippy" },
+        // Separate build folder for rust-analyzer, so its checks don't wait
+        // on `trunk serve` rebuilding the site (and the other way round).
+        "rust": { "analyzerTargetDir": true }
+      }
+    }
+  },
+  "languages": {
+    // rustfmt via rust-analyzer. For Leptos view! macros, run the
+    // "leptosfmt" task.
+    "Rust": { "format_on_save": "on" },
+    // Keep shop.toml's hand-aligned comments as they are.
+    "TOML": { "format_on_save": "off" }
+  }
+}

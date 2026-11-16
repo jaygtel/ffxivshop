@@ -1,0 +1,13 @@
+# Never sent to Docker builds, so never inside an image:
+# secrets and server settings
+.env
+.env.*
+# build output, history and editor settings
+target/
+dist/
+.git/
+.devcontainer/
+.zed/
+*.zip
+# Docker Compose files (not needed inside images)
+compose*.yaml

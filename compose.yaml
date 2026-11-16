@@ -1,0 +1,49 @@
+# Runs the site on your server, behind your Traefik.
+#
+#   docker compose up -d --build
+#   cp deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
+#
+# After pulling changes from GitHub, run the same `up` command again.
+#
+# No ports are published on the server. The container joins the existing
+# traefik_proxy network, where Traefik reaches it by name through Docker's
+# DNS: http://aether-allure-site:8080
+
+name: aether-allure
+
+services:
+  site:
+    build:
+      context: .
+      target: site
+    image: aether-allure-site:latest
+    # The name Traefik uses to reach it (see deploy/traefik/aether-allure.yml).
+    container_name: aether-allure-site
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    # nginx runs as an unprivileged user on a read-only filesystem.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  # Traefik's existing network. Compose joins it but never creates or removes it.
+  traefik_proxy:
+    name: traefik_proxy
+    external: true

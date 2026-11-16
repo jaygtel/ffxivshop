@@ -1,0 +1,396 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Your shop. Everything on the website comes from this file.
+#
+#  After editing, rebuild (or leave `trunk serve` running and it reloads).
+#  A mistake here stops the build with a message saying what to fix.
+#
+#  Adding items: write the in-game name, category, price and ready time,
+#  then run   cargo run -p shop-tools -- fill
+#  to look up the Eorzea Database link, icon, item level and jobs for you.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[site]
+address = "https://aetherandallure.com"
+copyright = "Jason Telford"              # owner of the site design; shown in the footer as © <since> <name>
+since = 2026                             # the notice becomes "2026–2027" and so on automatically
+
+[shop]
+name = "Aether & Allure"
+title = "Master Artisan"                 # shown as «Master Artisan» above the name
+owner = "Sigrid Halvorsen"               # the character who owns the shop
+owner_role = "Owned and designed by"
+tagline = "Gear, meals and furnishings from all eight Disciples of the Hand, made to order."
+
+status = "open"                          # open, busy or closed
+status_note = "Current wait is about a day on top of the times below."
+
+default_ready = "1d"                     # used by any item without its own `ready`
+
+lodestone = "eu"                         # which Lodestone the item links open: na, eu, fr, de or jp
+icons = true                             # item icons, loaded from XIVAPI
+tooltips = true                          # Square Enix's Eorzea Database hover tooltips
+
+# Shows a "sample shop" notice. Set to false once your own details are in.
+demo = true
+
+how_to_order = [
+  "Add what you'd like to your order, then copy it.",
+  "Send it to me with a /tell or on Discord.",
+  "I'll confirm the price and when it'll be ready.",
+  "Collect it with a trade, or buy it from my retainer in the garden.",
+]
+
+[shop.crafters]                          # job = level; remove any you don't do
+CRP = 100
+BSM = 100
+ARM = 100
+GSM = 100
+LTW = 100
+WVR = 100
+ALC = 100
+CUL = 100
+
+[location]
+data_center = "Chaos"
+world = "Sagittarius"
+district = "Shirogane"                   # Mist, The Lavender Beds, The Goblet, Shirogane or Empyreum
+ward = 29
+plot = 3                                 # 31-60 are in the subdivision
+# size = "Medium"                        # Small, Medium or Large, if you'd like it shown
+retainer = "Yhuna'li"                    # your retainer's name
+spot = "in the garden"
+
+[contact]
+note = "I usually reply within a few hours, most evenings and weekends (UK time)."
+tell = true                              # shows "/tell Sigrid Halvorsen@Sagittarius" with a copy button
+friend_request = true
+message_book = true                      # visitors can leave a note in the estate's message book
+# linkshell = "Garden Crafters (CWLS)"
+discord = "your.discord.name"            # your Discord username
+# discord_server = "https://discord.gg/your-invite"
+email = "commissions@example.com"        # e.g. an address on aetherandallure.com
+
+# [[contact.links]]
+# label = "Bluesky"
+# url = "https://bsky.app/profile/your-handle"
+
+# ─── Categories ──────────────────────────────────────────────────────────────
+# The tabs above the item list, in this order. `key` is what items use and
+# what appears in links such as yoursite/#housing. `glyph` is the picture shown
+# when an item has no icon: sword, shield, armor, ring, tool, potion, food,
+# house, gem or crate.
+
+[[category]]
+key = "arms"
+label = "Arms"
+glyph = "sword"
+
+[[category]]
+key = "armor"
+label = "Armor"
+glyph = "armor"
+
+[[category]]
+key = "accessories"
+label = "Accessories"
+glyph = "ring"
+
+[[category]]
+key = "tools"
+label = "Tools"
+glyph = "tool"
+
+[[category]]
+key = "consumables"
+label = "Medicine & meals"
+glyph = "potion"
+
+[[category]]
+key = "housing"
+label = "Housing"
+glyph = "house"
+
+# ─── Items ───────────────────────────────────────────────────────────────────
+# name            the in-game name
+# category        one of the keys above
+# price           in gil; leave it out to show "Ask"
+# price_own_mats  optional price if the buyer brings the materials
+# per             optional, e.g. "each" or "stack of 99"
+# ready           how long until it's ready: "now", "6h", "2d", "1d 12h", "1w"
+# hq              true if you craft it in high quality
+# note            optional short note
+# id, lodestone, icon, ilvl, level, jobs   filled in by shop-tools
+
+[[item]]
+name = "Courtly Lover's Rapier"
+category = "arms"
+price = 380_000
+price_own_mats = 90_000
+ready = "2d"
+hq = true
+id = 49263
+lodestone = "6246afd2ba5"
+icon = 36880
+ilvl = 770
+level = 100
+jobs = "RDM"
+
+[[item]]
+name = "Courtly Lover's Sword"
+category = "arms"
+price = 340_000
+price_own_mats = 85_000
+ready = "2d"
+hq = true
+id = 49249
+lodestone = "9d5d296bbe6"
+icon = 30703
+ilvl = 770
+level = 100
+jobs = "PLD"
+
+[[item]]
+name = "Courtly Lover's Longbow"
+category = "arms"
+price = 360_000
+price_own_mats = 90_000
+ready = "2d"
+hq = true
+id = 49253
+lodestone = "992333d2e1d"
+icon = 32067
+ilvl = 770
+level = 100
+jobs = "BRD"
+
+[[item]]
+name = "Courtly Lover's Filbert Brush"
+category = "arms"
+price = 360_000
+price_own_mats = 90_000
+ready = "2d"
+hq = true
+id = 49269
+lodestone = "b7fc3c61922"
+icon = 37666
+ilvl = 770
+level = 100
+jobs = "PCT"
+
+[[item]]
+name = "Courtly Lover's Longcoat of Casting"
+category = "armor"
+price = 240_000
+price_own_mats = 60_000
+ready = "1d"
+hq = true
+id = 49302
+lodestone = "2217003d745"
+icon = 57324
+ilvl = 770
+level = 100
+jobs = "BLM SMN RDM BLU PCT"
+
+[[item]]
+name = "Courtly Lover's Hood of Casting"
+category = "armor"
+price = 140_000
+price_own_mats = 40_000
+ready = "1d"
+hq = true
+id = 49301
+lodestone = "ec02f0654ad"
+icon = 56898
+ilvl = 770
+level = 100
+jobs = "BLM SMN RDM BLU PCT"
+
+[[item]]
+name = "Courtly Lover's Breeches of Fending"
+category = "armor"
+price = 190_000
+price_own_mats = 50_000
+ready = "1d"
+hq = true
+id = 49274
+lodestone = "e8e59274b0d"
+icon = 57423
+ilvl = 770
+level = 100
+jobs = "PLD WAR DRK GNB"
+
+[[item]]
+name = "Courtly Lover's Halfgloves of Aiming"
+category = "armor"
+price = 140_000
+price_own_mats = 40_000
+ready = "1d"
+hq = true
+id = 49288
+lodestone = "d9aff1b6558"
+icon = 56409
+ilvl = 770
+level = 100
+jobs = "BRD MCH DNC"
+
+[[item]]
+name = "Courtly Lover's Ring of Casting"
+category = "accessories"
+price = 110_000
+price_own_mats = 30_000
+ready = "12h"
+hq = true
+id = 49325
+lodestone = "79c7d95fc02"
+icon = 54761
+ilvl = 770
+level = 100
+jobs = "BLM SMN RDM BLU PCT"
+
+[[item]]
+name = "Courtly Lover's Earrings of Casting"
+category = "accessories"
+price = 110_000
+price_own_mats = 30_000
+ready = "12h"
+hq = true
+id = 49310
+lodestone = "0e1fe2acb79"
+icon = 55565
+ilvl = 770
+level = 100
+jobs = "BLM SMN RDM BLU PCT"
+
+[[item]]
+name = "Courtly Lover's Choker of Fending"
+category = "accessories"
+price = 110_000
+price_own_mats = 30_000
+ready = "12h"
+hq = true
+id = 49311
+lodestone = "a2c131cb9ca"
+icon = 55110
+ilvl = 770
+level = 100
+jobs = "PLD WAR DRK GNB"
+
+[[item]]
+name = "Gold Thumb's Hatchet"
+category = "tools"
+price = 95_000
+ready = "1d"
+hq = true
+id = 47172
+lodestone = "1acb00803a2"
+icon = 38414
+ilvl = 750
+level = 100
+jobs = "BTN"
+
+[[item]]
+name = "Gold Thumb's Fishing Rod"
+category = "tools"
+price = 95_000
+ready = "1d"
+hq = true
+id = 47173
+lodestone = "41c0e69521f"
+icon = 38517
+ilvl = 750
+level = 100
+jobs = "FSH"
+
+[[item]]
+name = "Gold Thumb's Culinary Knife"
+category = "tools"
+price = 60_000
+ready = "1d"
+hq = true
+id = 47181
+lodestone = "898ad0b3482"
+icon = 35765
+ilvl = 750
+level = 100
+jobs = "CUL"
+
+[[item]]
+name = "Grade 4 Gemdraught of Strength"
+category = "consumables"
+price = 4_500
+per = "each"
+ready = "now"
+hq = true
+note = "Stacks of 99 on request."
+id = 49234
+lodestone = "29ed6727b55"
+icon = 20710
+
+[[item]]
+name = "Grade 4 Gemdraught of Intelligence"
+category = "consumables"
+price = 4_500
+per = "each"
+ready = "now"
+hq = true
+id = 49237
+lodestone = "769d73dd78d"
+icon = 20706
+
+[[item]]
+name = "Quahog Chowder"
+category = "consumables"
+price = 2_500
+per = "each"
+ready = "6h"
+hq = true
+id = 49248
+lodestone = "2f56601e30b"
+icon = 24114
+
+[[item]]
+name = "Rroneek au Gratin"
+category = "consumables"
+price = 2_200
+per = "each"
+ready = "6h"
+hq = true
+id = 49243
+lodestone = "3f1a2d7652e"
+icon = 24116
+
+[[item]]
+name = "Everkeep Platform Bed"
+category = "housing"
+price = 85_000
+ready = "3d"
+id = 51255
+lodestone = "1491da9cbcd"
+icon = 52882
+
+[[item]]
+name = "Everkeep Sofa"
+category = "housing"
+price = 60_000
+ready = "3d"
+id = 51256
+lodestone = "7cc14987ae5"
+icon = 52880
+
+[[item]]
+name = "Tuliyollan Table"
+category = "housing"
+price = 45_000
+ready = "2d"
+id = 46096
+lodestone = "bc189843ea6"
+icon = 51748
+
+[[item]]
+name = "Semicircular Outdoor Stage"
+category = "housing"
+ready = "1w"
+note = "Price depends on materials; ask me."
+id = 51271
+lodestone = "cc77449246c"
+icon = 53746

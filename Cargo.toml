@@ -1,0 +1,49 @@
+[package]
+name = "ffxiv-shop"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "An FFXIV crafting shop page, written in Rust and compiled to WebAssembly."
+license = "BSD-3-Clause"
+authors = ["Jason Telford"]
+publish = false
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
+serde = { version = "1", features = ["derive"] }
+toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = [
+  "CanvasGradient",
+  "CanvasRenderingContext2d",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "HtmlElement",
+  "HtmlTextAreaElement",
+  "Location",
+  "MediaQueryList",
+  "Navigator",
+  "ScrollBehavior",
+  "ScrollIntoViewOptions",
+  "ScrollLogicalPosition",
+  "Storage",
+  "Window",
+] }
+
+# build.rs checks shop.toml with the same code the site uses.
+[build-dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
+
+[workspace]
+members = ["tools"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
