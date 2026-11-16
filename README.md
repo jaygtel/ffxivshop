@@ -37,7 +37,7 @@ cargo run -p shop-tools -- fill
 ```
 
 It looks up each item's Eorzea Database link, icon, item level, level and jobs,
-and writes them into `shop.toml` without touching anything you've already set
+and writes them into `shop.toml` without touching anything already set
 (comments and layout are kept). To search for an item first:
 
 ```sh
@@ -48,8 +48,7 @@ After a game patch, add `--refresh` to download fresh item data.
 
 ## Developing in the dev container (Zed)
 
-Everything needed to work on the site runs inside a container, so your
-computer only needs two things:
+Everything needed to work on the site runs inside a container, so only two things are neeed:
 
 - **Docker** (Docker Desktop on macOS and Windows, Docker Engine on Linux) or
   Podman. With Podman, set `"use_podman": true` in Zed's settings.
