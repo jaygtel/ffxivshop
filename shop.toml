@@ -34,7 +34,7 @@ icons = true                             # item icons, loaded from XIVAPI
 tooltips = true                          # Square Enix's Eorzea Database hover tooltips
 
 # Shows a "sample shop" notice. Set to false once your own details are in.
-demo = true
+demo = false
 
 how_to_order = [
   "Add what you'd like to your order, then copy it.",
