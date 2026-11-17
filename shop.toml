@@ -16,10 +16,13 @@ since = 2026                             # the notice becomes "2026–2027" and 
 
 [shop]
 name = "Aether & Allure"
+# The hero at the top of the page (assets/hero.svg) shows the name, title and
+# tagline as part of its drawing. These lines are what screen readers hear, so
+# keep them matching; changing the words on screen means redrawing the hero.
 title = "Master Artisan"                 # shown as «Master Artisan» above the name
 owner = "Sigrid Halvorsen"               # the character who owns the shop
 owner_role = "Owned and designed by"
-tagline = "Gear, meals and furnishings from all eight Disciples of the Hand, made to order."
+tagline = "Crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV."
 
 status = "open"                          # open, busy or closed
 status_note = "Current wait is about a day on top of the times below."

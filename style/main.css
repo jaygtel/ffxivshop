@@ -115,6 +115,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Order Now glides down to the shop (instant with reduced motion, below). */
+  scroll-behavior: smooth;
 }
 
 body {
@@ -194,83 +196,103 @@ h3 {
   max-width: 75ch;
 }
 
-/* ------------------------------------------------------------- nameplate */
+/* ------------------------------------------------------------------ hero */
 
-.nameplate {
+/* The opening screen: a full screen tall, with everything centred. */
+.hero {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  column-gap: clamp(16px, 3vw, 32px);
-  row-gap: 14px;
-  padding-top: clamp(4px, 3vw, 32px);
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: clamp(16px, 2.4vh, 24px);
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: clamp(24px, 6vh, 64px) clamp(16px, 3vw, 40px);
+  text-align: center;
 }
 
-.np-crest {
-  width: clamp(96px, 14vw, 168px);
-  /* The monogram's own colours are for light or dark pages; this page is dark. */
+.hero-title {
+  justify-self: stretch;
+  margin: 0 0 clamp(4px, 1.5vh, 16px);
+}
+
+/* assets/hero.svg, inlined. It picks its own layout for the window (side by
+   side, or stacked when the window is narrower than 5:4) and its own
+   aspect-ratio, so here it's only given a width. */
+.hero-art {
+  display: block;
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  /* The hero's own colours suit light or dark pages; this page is always dark. */
   --aa-ink: var(--vellum);
   --aa-accent: var(--gilt);
+  --aa-muted: var(--ash);
   --aa-edge: rgba(12, 14, 24, 0.85);
-  filter: drop-shadow(0 0 22px rgba(134, 218, 231, 0.18));
+  --aa-glow: rgba(134, 218, 231, 0.32);
 }
 
-.np-crest svg {
+/* Only the outer <svg>: the layouts inside it are svgs too, shown or hidden by
+   hero.svg's own media queries. On short screens it stops at the height left
+   over, and the drawing shrinks to fit inside it, still centred. */
+.hero-art > svg {
   display: block;
   width: 100%;
   height: auto;
+  max-height: max(160px, calc(100vh - 300px));
+  max-height: max(160px, calc(100svh - 300px));
+  overflow: visible;
 }
 
-.np-heading {
-  display: grid;
-  gap: 2px;
+/* hero.svg stacks when the window is narrower than 5:4 (keep the two in
+   step). Tablets held upright get a big emblem, but not a giant one. */
+@media (max-aspect-ratio: 5/4) {
+  .hero-art {
+    width: min(100%, 720px);
+  }
 }
 
-.np-title {
-  margin: 0;
-  color: var(--gilt);
-  font-size: var(--step-1);
-  letter-spacing: 0.02em;
-}
-
-.np-name {
-  margin: 0;
-  font-family: var(--font-crest);
-  font-weight: 700;
-  font-size: var(--step-4);
-  line-height: 1.02;
-  letter-spacing: 0.01em;
-  color: var(--vellum);
-  text-shadow:
-    0 0 24px rgba(134, 218, 231, 0.32),
-    0 2px 0 rgba(0, 0, 0, 0.55);
-}
-
-.np-tagline {
-  margin: 8px 0 0;
-  max-width: 60ch;
-  color: var(--ash);
-  font-size: var(--step-1);
-  line-height: 1.4;
-}
-
-.np-facts {
-  grid-column: 1 / -1;
+.hero-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 18px;
+  justify-content: center;
+  gap: 12px 18px;
 }
 
-.np-who {
+/* .btn comes later in this file, so these need the extra class to win. */
+.btn.hero-cta {
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-size: var(--step-1);
+  text-decoration: none;
+  box-shadow:
+    0 0 28px rgba(217, 181, 109, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* The narrowest phones: keep the status beside the button. */
+@media (max-width: 359.98px) {
+  .hero-actions {
+    column-gap: 10px;
+  }
+
+  .btn.hero-cta {
+    padding-inline: 20px;
+  }
+}
+
+.hero-note {
   margin: 0;
-  max-width: 80ch;
-}
-
-.np-note {
-  grid-column: 1 / -1;
-  margin: -4px 0 0;
+  max-width: 60ch;
   color: var(--ash);
   font-size: var(--step--1);
+}
+
+.hero .crafters {
+  justify-content: center;
+  max-width: 760px;
 }
 
 .status {
@@ -583,6 +605,15 @@ select {
 }
 
 /* The list */
+
+/* The list is a table when the wares panel is wide enough, and two-line rows
+   when it isn't. It goes by the panel's own width (a container query), not the
+   screen's, so it fits wherever the page puts it: beside the order, full
+   width, or on a phone. The table's fixed columns take about 490px, so under
+   720px the item names would get squeezed. */
+.wares {
+  container: wares / inline-size;
+}
 
 .ware-head,
 .ware {
@@ -1180,15 +1211,10 @@ code.ch-value {
   }
 }
 
-@media (max-width: 640px) {
-  .nameplate {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .np-crest {
-    width: 112px;
-  }
-
+/* Two-line rows: the name on top, then ready time, price and Add. Keep the
+   container-query blocks and the fallback for browsers without container
+   queries (further down) the same. */
+@container wares (max-width: 719.98px) {
   .ware-head {
     display: none;
   }
@@ -1206,7 +1232,83 @@ code.ch-value {
   .ware-ready {
     align-self: center;
   }
+}
 
+/* The narrowest panels (phones): the ready time on its own line, then the
+   price beneath it with Add at the end of that line. */
+@container wares (max-width: 519.98px) {
+  .ware {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "slot main main"
+      "slot ready ready"
+      "slot price act";
+    row-gap: 6px;
+  }
+
+  .ware-ready {
+    align-self: start;
+    margin-top: 2px;
+  }
+
+  .ware-price {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .ware-act {
+    align-self: center;
+  }
+}
+
+@supports not (container-type: inline-size) {
+  @media (max-width: 640px) {
+    .ware-head {
+      display: none;
+    }
+
+    .ware {
+      grid-template-columns: 48px minmax(0, 1fr) auto auto;
+      grid-template-areas:
+        "slot main main main"
+        "slot ready price act";
+      column-gap: 10px;
+      row-gap: 8px;
+      align-items: start;
+    }
+
+    .ware-ready {
+      align-self: center;
+    }
+  }
+
+  @media (max-width: 552.98px) {
+    .ware {
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      grid-template-areas:
+        "slot main main"
+        "slot ready ready"
+        "slot price act";
+      row-gap: 6px;
+    }
+
+    .ware-ready {
+      align-self: start;
+      margin-top: 2px;
+    }
+
+    .ware-price {
+      justify-items: start;
+      text-align: left;
+    }
+
+    .ware-act {
+      align-self: center;
+    }
+  }
+}
+
+@media (max-width: 640px) {
   .channel {
     grid-template-columns: minmax(0, 1fr) auto;
   }

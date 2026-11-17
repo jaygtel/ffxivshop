@@ -1,5 +1,5 @@
 use crate::browser;
-use crate::components::{AetherSky, ContactCard, FindMe, Footer, Nameplate, OrderSlip, Wares};
+use crate::components::{AetherSky, ContactCard, FindMe, Footer, Hero, OrderSlip, Wares};
 use crate::model::{EDB_TOOLTIP_SCRIPT, Shop};
 use crate::order::Order;
 use leptos::prelude::*;
@@ -33,7 +33,9 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
 
     view! {
         <AetherSky />
-        <div class="page">
+        <Hero shop />
+        // The hero's Order Now link scrolls here.
+        <div class="page" id="shop">
             {shop
                 .shop
                 .demo
@@ -44,13 +46,16 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
                             " The listings, prices and contact details here are examples. Edit shop.toml to make them yours, then set demo = false."
                         </p>
                     }
-                })} <Nameplate shop /> <main class="market">
+                })}
+            <main class="market">
                 <Wares shop order />
                 <OrderSlip shop order />
-            </main> <div class="visit">
+            </main>
+            <div class="visit">
                 <FindMe shop />
                 <ContactCard shop />
-            </div> <Footer shop />
+            </div>
+            <Footer shop />
         </div>
     }
 }

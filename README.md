@@ -3,8 +3,8 @@
 The website for **Aether & Allure**, Sigrid Halvorsen's crafting shop in
 FINAL FANTASY XIV, at [aetherandallure.com](https://aetherandallure.com).
 It's written in Rust and compiled to WebAssembly with [Leptos](https://leptos.dev),
-built with [Trunk](https://trunkrs.dev), and runs in a Docker container on a
-private server. The code is kept on GitHub.
+built with [Trunk](https://trunkrs.dev), and runs in a Docker container on your
+own server. The code is kept on GitHub.
 
 © 2026 Jason Telford. Released under the [BSD 3-Clause License](LICENSE).
 
@@ -37,7 +37,7 @@ cargo run -p shop-tools -- fill
 ```
 
 It looks up each item's Eorzea Database link, icon, item level, level and jobs,
-and writes them into `shop.toml` without touching anything already set
+and writes them into `shop.toml` without touching anything you've already set
 (comments and layout are kept). To search for an item first:
 
 ```sh
@@ -48,7 +48,8 @@ After a game patch, add `--refresh` to download fresh item data.
 
 ## Developing in the dev container (Zed)
 
-Everything needed to work on the site runs inside a container, so only two things are neeed:
+Everything needed to work on the site runs inside a container, so your
+computer only needs two things:
 
 - **Docker** (Docker Desktop on macOS and Windows, Docker Engine on Linux) or
   Podman. With Podman, set `"use_podman": true` in Zed's settings.
@@ -270,19 +271,48 @@ container in `compose.yaml`. `git status` should never list `.env`.
 Your Cloudflare Origin certificate and its private key belong with Traefik's
 own config. Never copy them into this repository.
 
-## The logo
+## The logo and hero
 
 `assets/logo.svg` and `assets/favicon.svg` are the A&A monogram as transparent
 SVGs. They use dark letters on light backgrounds and light letters on dark ones
 (following the viewer's light or dark mode), and every letter has a thin
 contrasting edge, so the mark stays readable even on a background that doesn't
-match. The site's header shows the same file. A page that inlines it can choose
-its colours with the `--aa-ink`, `--aa-accent` and `--aa-edge` CSS custom
-properties.
+match. A page that inlines it can choose its colours with the `--aa-ink`,
+`--aa-accent` and `--aa-edge` CSS custom properties.
 
-The letterforms are drawn from Cinzel and Cinzel Decorative (SIL Open Font
-License). The site also serves `logo.svg`, `og-card.png` (the preview image
-shown when the link is shared on Discord and elsewhere) and `apple-touch-icon.png`.
+`assets/favicon.ico` is a fallback copy of the favicon (16, 32 and 48 pixels, in
+its light-background colours) for places that can't show SVG, such as Google
+Search results, older Safari and tools that only ever ask for `/favicon.ico`.
+Browsers that can show the SVG (Chrome, Edge, Firefox) still use it: the
+`sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome from
+choosing the ICO instead. If the favicon's design changes, remake the ICO too.
+
+`assets/hero.svg` is the preview card's design (monogram, «Master Artisan»,
+the shop's name and tagline) on a transparent background. It handles light and
+dark backgrounds the same way as the logo, and arranges itself for the space it
+has:
+
+- landscape, 900px and wider: monogram on the left, text on the right
+- landscape, under 900px: the same arrangement, with larger text for the width
+- narrower than 5:4 (phones, tablets held upright): stacked
+
+It always sits centred in its space. The site opens with it: a full-screen,
+centred hero with an **Order Now** button that scrolls down to the shop, the
+shop's status and the crafting jobs. The site inlines the file, so it follows
+the browser window, and sets its colours with the custom properties above plus
+`--aa-muted` (the tagline) and `--aa-glow`. Opened on its own or used as an
+image, it follows its own box. As an image it has no fixed size: give it a
+width and the aspect ratio listed at the top of the file.
+
+The hero's lettering is drawn as shapes, so its words are fixed, as on the
+preview card. `name`, `title` and `tagline` in `shop.toml` are what screen
+readers hear, so keep them matching; different wording on screen means
+redrawing the hero.
+
+The letterforms are drawn from Cinzel, Cinzel Decorative and Alegreya Sans (SIL
+Open Font License). The site also serves `logo.svg`, `hero.svg`,
+`favicon.svg`, `favicon.ico`, `og-card.png` (the preview image shown when the
+link is shared on Discord and elsewhere) and `apple-touch-icon.png`.
 
 ## Item links, tooltips and icons
 
@@ -313,7 +343,7 @@ src/model.rs            reads and checks shop.toml
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
 style/main.css          the look
-assets/                 monogram, favicon, preview images, fonts
+assets/                 monogram, favicon, hero, preview images, fonts
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
 ```

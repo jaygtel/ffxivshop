@@ -19,11 +19,18 @@
     <link data-trunk rel="rust" data-bin="ffxiv-shop" data-wasm-opt="z">
     <link data-trunk rel="css" href="style/main.css">
     <link data-trunk rel="copy-dir" href="assets/fonts">
-    <link data-trunk rel="icon" href="assets/favicon.svg">
     <link data-trunk rel="copy-file" href="assets/logo.svg">
+    <link data-trunk rel="copy-file" href="assets/hero.svg">
     <link data-trunk rel="copy-file" href="assets/favicon.svg">
+    <link data-trunk rel="copy-file" href="assets/favicon.ico">
     <link data-trunk rel="copy-file" href="assets/og-card.png">
     <link data-trunk rel="copy-file" href="assets/apple-touch-icon.png">
+    <!-- Favicon: the SVG wherever a browser can show it (it follows light and
+         dark mode), and favicon.ico for everything that can't, such as Google
+         Search results and older Safari. The ICO's sizes="32x32" stops Chrome
+         from choosing it over the SVG. -->
+    <link rel="icon" href="favicon.ico" sizes="32x32">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
   </head>
   <body>
