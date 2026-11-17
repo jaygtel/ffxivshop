@@ -20,7 +20,8 @@ pub fn Hero(shop: &'static Shop) -> impl IntoView {
         .collect();
 
     view! {
-        <header class="hero">
+        // Back to top scrolls here and moves keyboard focus here.
+        <header class="hero" id="top" tabindex="-1">
             <h1 class="hero-title">
                 <span class="sr-only">{info.name.clone()}</span>
                 <span class="hero-art" aria-hidden="true" inner_html=HERO></span>

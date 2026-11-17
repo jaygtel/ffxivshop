@@ -107,6 +107,30 @@ pub fn scroll_to(id: &str) {
     element.scroll_into_view_with_scroll_into_view_options(&options);
 }
 
+/// Moves keyboard focus to an element without scrolling to it, so the next
+/// Tab carries on from there. The element needs a tabindex to take focus.
+pub fn focus_quietly(id: &str) {
+    let Some(element) = web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.get_element_by_id(id))
+        .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
+    else {
+        return;
+    };
+    let options = web_sys::FocusOptions::new();
+    options.set_prevent_scroll(true);
+    let _ = element.focus_with_options(&options);
+}
+
+/// Where the first element matching `selector` is, relative to the window.
+pub fn rect(selector: &str) -> Option<web_sys::DomRect> {
+    let element = web_sys::window()?
+        .document()?
+        .query_selector(selector)
+        .ok()??;
+    Some(element.get_bounding_client_rect())
+}
+
 pub fn prefers_reduced_motion() -> bool {
     web_sys::window()
         .and_then(|w| {

@@ -1,5 +1,7 @@
 use crate::browser;
-use crate::components::{AetherSky, ContactCard, FindMe, Footer, Hero, OrderSlip, Wares};
+use crate::components::{
+    AetherSky, BackToTop, ContactCard, FindMe, Footer, Hero, OrderSlip, Wares,
+};
 use crate::model::{EDB_TOOLTIP_SCRIPT, Shop};
 use crate::order::Order;
 use leptos::prelude::*;
@@ -57,6 +59,7 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
             </div>
             <Footer shop />
         </div>
+        <BackToTop />
     }
 }
 
