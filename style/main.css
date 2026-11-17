@@ -1176,9 +1176,8 @@ code.ch-value {
 
 /* ------------------------------------------------------------ back to top */
 
-/* Bottom right, once the hero has scrolled away, and only where the margin
-   beside the page can hold it (BackToTop measures that). It's hidden with
-   visibility rather than display, so it keeps its place to be measured. */
+/* Bottom right, once the hero has scrolled away (BackToTop adds .shown). The
+   stacked layout hides it altogether: see the 960px block further down. */
 .to-top {
   position: fixed;
   right: 24px;
@@ -1199,20 +1198,33 @@ code.ch-value {
   cursor: pointer;
   visibility: hidden;
   opacity: 0;
-  translate: 0 8px;
+  translate: 0 18px;
+  scale: 0.82;
+  /* Leaving: a quick fade and drop. */
   transition:
-    opacity 0.2s ease,
-    translate 0.2s ease,
-    visibility 0s linear 0.2s;
+    opacity 0.28s ease-in,
+    translate 0.28s ease-in,
+    scale 0.28s ease-in,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    visibility 0s linear 0.28s;
 }
 
 .to-top.shown {
   visibility: visible;
   opacity: 1;
   translate: 0 0;
+  scale: 1;
+  /* Arriving: a slower fade while it rises and grows into place, with a
+     slight settle at the end. */
   transition:
-    opacity 0.2s ease,
-    translate 0.2s ease,
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    translate 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    scale 0.65s cubic-bezier(0.34, 1.45, 0.64, 1),
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
     visibility 0s;
 }
 
@@ -1246,6 +1258,11 @@ code.ch-value {
   .market,
   .visit {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* No Back to top button while the page is stacked. */
+  .to-top {
+    display: none;
   }
 
   .order {
@@ -1391,5 +1408,20 @@ code.ch-value {
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Back to top still fades rather than popping in, but doesn't move. */
+  .to-top {
+    translate: none;
+    scale: none;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s linear 0.25s !important;
+  }
+
+  .to-top.shown {
+    transition:
+      opacity 0.4s ease,
+      visibility 0s !important;
   }
 }

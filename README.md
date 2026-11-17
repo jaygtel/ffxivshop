@@ -304,9 +304,9 @@ the browser window, and sets its colours with the custom properties above plus
 image, it follows its own box. As an image it has no fixed size: give it a
 width and the aspect ratio listed at the top of the file.
 
-Once the hero has scrolled away, a **Back to top** button appears in the
-bottom-right corner. It only shows when the margin beside the page has room
-for it (about 1376px and wider), so never on phones or in the stacked layout.
+Once the hero has scrolled away, a **Back to top** button fades into the
+bottom-right corner. It's hidden while the hero is on screen and whenever the
+page is stacked (960px wide and under), so never on phones.
 
 The hero's lettering is drawn as shapes, so its words are fixed, as on the
 preview card. `name`, `title` and `tagline` in `shop.toml` are what screen
