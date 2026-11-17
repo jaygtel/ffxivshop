@@ -1,7 +1,7 @@
 //! Small wrappers around the browser features the shop uses. Each one fails
 //! quietly, so the shop still works where storage or the clipboard is blocked.
 
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
 /// The part of the address after `#`, e.g. "housing".
 pub fn hash() -> String {
@@ -120,6 +120,52 @@ pub fn focus_quietly(id: &str) {
     let options = web_sys::FocusOptions::new();
     options.set_prevent_scroll(true);
     let _ = element.focus_with_options(&options);
+}
+
+/// Whether the page is scrolled all the way down, give or take `slack` pixels.
+pub fn at_bottom(slack: f64) -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    let Some(root) = window.document().and_then(|d| d.document_element()) else {
+        return false;
+    };
+    let window_height = window
+        .inner_height()
+        .ok()
+        .and_then(|h| h.as_f64())
+        .unwrap_or(0.0);
+    let scrolled = window.scroll_y().unwrap_or(0.0);
+    scrolled + window_height >= f64::from(root.scroll_height()) - slack
+}
+
+/// Calls `changed` whenever the first element matching `selector` changes
+/// size, and once when it starts (after the page is laid out). It keeps
+/// watching for as long as the returned `SizeWatch` is kept.
+pub fn watch_size(selector: &str, changed: impl Fn() + 'static) -> Option<SizeWatch> {
+    let element = web_sys::window()?
+        .document()?
+        .query_selector(selector)
+        .ok()??;
+    let changed = Closure::<dyn Fn()>::new(changed);
+    let observer = web_sys::ResizeObserver::new(changed.as_ref().unchecked_ref()).ok()?;
+    observer.observe(&element);
+    Some(SizeWatch {
+        observer,
+        _changed: changed,
+    })
+}
+
+/// Stops watching when dropped. See `watch_size`.
+pub struct SizeWatch {
+    observer: web_sys::ResizeObserver,
+    _changed: Closure<dyn Fn()>,
+}
+
+impl Drop for SizeWatch {
+    fn drop(&mut self) {
+        self.observer.disconnect();
+    }
 }
 
 /// Where the first element matching `selector` is, relative to the window.

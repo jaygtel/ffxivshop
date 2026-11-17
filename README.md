@@ -305,8 +305,11 @@ image, it follows its own box. As an image it has no fixed size: give it a
 width and the aspect ratio listed at the top of the file.
 
 Once the hero has scrolled away, a **Back to top** button fades into the
-bottom-right corner. It's hidden while the hero is on screen and whenever the
-page is stacked (960px wide and under), so never on phones.
+bottom-right corner. On wide windows (about 1376px and up) the margin beside the
+page has room for it, so it shows straight away. On narrower windows it would
+cover the page as it scrolls past, so it waits until you reach the very bottom,
+where it sits in the empty space below the footer. It's always hidden while the
+hero is on screen and whenever the page is stacked (960px wide and under).
 
 The hero's lettering is drawn as shapes, so its words are fixed, as on the
 preview card. `name`, `title` and `tagline` in `shop.toml` are what screen

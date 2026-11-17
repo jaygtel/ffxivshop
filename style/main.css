@@ -1176,8 +1176,12 @@ code.ch-value {
 
 /* ------------------------------------------------------------ back to top */
 
-/* Bottom right, once the hero has scrolled away (BackToTop adds .shown). The
-   stacked layout hides it altogether: see the 960px block further down. */
+/* Bottom right, once the hero has scrolled away (BackToTop adds .shown):
+   straight away where the margin beside the page has room for it, otherwise
+   only once the page is scrolled all the way down, in the empty space below
+   the footer. It's hidden with visibility rather than display, so it keeps
+   its place to be measured. The stacked layout hides it altogether: see the
+   960px block further down. */
 .to-top {
   position: fixed;
   right: 24px;
