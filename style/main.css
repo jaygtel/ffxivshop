@@ -933,10 +933,6 @@ select {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-.ol-price em {
-  color: var(--ash);
-}
-
 .order-total {
   display: flex;
   align-items: baseline;

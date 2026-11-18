@@ -281,17 +281,10 @@ fn OrderLine(shop: &'static Shop, order: Order, index: usize) -> impl IntoView {
                     "+"
                 </button>
             </span>
+            // "Ask" looks just like a price here: coin first, same size and colour.
             <span class="ol-price">
-                {move || match line_total() {
-                    Some(total) => {
-                        view! {
-                            <GilIcon />
-                            {total}
-                        }
-                            .into_any()
-                    }
-                    None => view! { <em>"Ask"</em> }.into_any(),
-                }}
+                <GilIcon />
+                {move || line_total().unwrap_or_else(|| "Ask".to_string())}
             </span>
         </li>
     }
