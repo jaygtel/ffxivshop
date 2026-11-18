@@ -34,13 +34,13 @@ icons = true                             # item icons, loaded from XIVAPI
 tooltips = true                          # Square Enix's Eorzea Database hover tooltips
 
 # Shows a "sample shop" notice. Set to false once your own details are in.
-demo = false
+demo = true
 
 how_to_order = [
   "Add what you'd like to your order, then copy it.",
   "Send it to me with a /tell or on Discord.",
   "I'll confirm the price and when it'll be ready.",
-  "Collect it with a trade, or buy it from my retainer in the garden.",
+  "Collect it from me at my house with a trade.",
 ]
 
 [shop.crafters]                          # job = level; remove any you don't do
@@ -53,15 +53,13 @@ WVR = 100
 ALC = 100
 CUL = 100
 
-[location]
+[location]                               # your house, where buyers collect their orders
 data_center = "Chaos"
 world = "Sagittarius"
 district = "Shirogane"                   # Mist, The Lavender Beds, The Goblet, Shirogane or Empyreum
 ward = 29
 plot = 3                                 # 31-60 are in the subdivision
 # size = "Medium"                        # Small, Medium or Large, if you'd like it shown
-retainer = "Yhuna'li"                    # your retainer's name
-spot = "in the garden"
 
 [contact]
 note = "I usually reply within a few hours, most evenings and weekends (UK time)."

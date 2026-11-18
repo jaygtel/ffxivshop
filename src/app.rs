@@ -53,9 +53,10 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
                 <Wares shop order />
                 <OrderSlip shop order />
             </main>
+            // Request a craft comes before Collection: ordering, then collecting.
             <div class="visit">
-                <FindMe shop />
                 <ContactCard shop />
+                <FindMe shop />
             </div>
             <Footer shop />
         </div>

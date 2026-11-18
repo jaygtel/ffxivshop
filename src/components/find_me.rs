@@ -1,4 +1,5 @@
-//! Where to find the retainer in game, with directions.
+//! The Collection section: where buyers come to collect their orders from
+//! me in person, at my house, with directions.
 
 use super::copy_button::CopyButton;
 use crate::model::Shop;
@@ -8,15 +9,11 @@ use leptos::prelude::*;
 pub fn FindMe(shop: &'static Shop) -> impl IntoView {
     let loc = &shop.location;
     let district = loc.district;
-    let spot = loc
-        .spot
-        .clone()
-        .unwrap_or_else(|| "on the plot".to_string());
 
     view! {
         <section class="window find" aria-labelledby="find-title">
             <header class="window-title">
-                <h2 id="find-title">"Find my retainer"</h2>
+                <h2 id="find-title">"Collection"</h2>
             </header>
             <div class="window-body">
                 <div class="plaque">
@@ -31,12 +28,13 @@ pub fn FindMe(shop: &'static Shop) -> impl IntoView {
                 </div>
 
                 <dl class="facts">
-                    <dt>"Retainer"</dt>
+                    <dt>"Collect from"</dt>
                     <dd>
-                        <strong>{loc.retainer.clone()}</strong>
-                        ", "
-                        {spot.clone()}
+                        <strong>{shop.shop.owner.clone()}</strong>
+                        ", in person"
                     </dd>
+                    <dt>"When"</dt>
+                    <dd>"Once your order's ready, at a time we agree"</dd>
                     {loc
                         .size
                         .clone()
@@ -46,8 +44,6 @@ pub fn FindMe(shop: &'static Shop) -> impl IntoView {
                                 <dd>{size} " house"</dd>
                             }
                         })}
-                    <dt>"Shopkeeper"</dt>
-                    <dd>{shop.shop.owner.clone()}</dd>
                 </dl>
 
                 <div class="block">
@@ -73,7 +69,7 @@ pub fn FindMe(shop: &'static Shop) -> impl IntoView {
                                 }
                             })}
                         <li>
-                            "Head to plot " {loc.plot} ". " {loc.retainer.clone()} " is " {spot} "."
+                            "Head to plot " {loc.plot} ", where I'll meet you to hand over your order."
                         </li>
                     </ol>
                 </div>

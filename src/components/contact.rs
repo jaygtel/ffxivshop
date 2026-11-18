@@ -8,7 +8,7 @@ const DEFAULT_STEPS: [&str; 4] = [
     "Add what you'd like to your order, then copy it.",
     "Send it to me in game or by message.",
     "I'll confirm the price and when it'll be ready.",
-    "Collect it with a trade, or from my retainer.",
+    "Collect it from me at my house with a trade.",
 ];
 
 #[component]

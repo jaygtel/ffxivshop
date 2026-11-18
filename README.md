@@ -16,7 +16,7 @@ Everything on the page comes from **`shop.toml`**. Each part is commented:
 | -------------- | ----------------------------------------------------------------------- |
 | `[site]`       | The site address and the copyright notice in the footer                  |
 | `[shop]`       | Name, owner, open/busy/closed status, crafter levels, ordering steps      |
-| `[location]`   | World, data center, housing district, ward, plot, and your retainer       |
+| `[location]`   | The house where buyers collect orders: world, district, ward and plot     |
 | `[contact]`    | `/tell`, friend request, message book, Discord, email, other links        |
 | `[[category]]` | The tabs above the item list                                             |
 | `[[item]]`     | One per listing: name, category, price in gil, ready time, HQ, notes     |
