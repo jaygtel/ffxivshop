@@ -22,8 +22,9 @@ Everything on the page comes from **`shop.toml`**. Each part is commented:
 | `[[item]]`     | One per listing: name, category, price in gil, ready time, HQ, notes     |
 
 Ready times are written like `"now"`, `"45m"`, `"6h"`, `"2d"`, `"1d 12h"` or `"1w"`.
-Leave out `price` to show "Ask". `price_own_mats` adds a cheaper price for buyers
-who bring the materials.
+Leave out `price` to show "Ask". The order total then shows "Ask" too (or, for
+example, "12,000 + Ask"), so an order never looks free. `price_own_mats` adds a
+cheaper price for buyers who bring the materials.
 
 If something in `shop.toml` is wrong, the build stops and says exactly what to fix.
 When your own details are in, set `demo = false` to remove the "sample shop" notice.

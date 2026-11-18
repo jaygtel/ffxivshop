@@ -959,6 +959,17 @@ select {
   height: 20px;
 }
 
+/* "Ask" in a total, or "+ Ask" after the gil: styled like "Ask" in the
+   shop list, and a step smaller than the number. */
+.order-total .ask,
+.order-peek .ask {
+  color: var(--ash);
+}
+
+.order-total .ask {
+  font-size: var(--step-1);
+}
+
 .order-small {
   margin: -8px 0 0;
   color: var(--ash);
@@ -1293,9 +1304,31 @@ code.ch-value {
 
   .order-peek strong {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 0 6px;
     margin-right: auto;
+  }
+
+  /* On the narrowest phones the total can't always fit with "+ Ask" beside
+     it, so "+ Ask" drops below the gil in one piece, and the item count
+     stays on one line. */
+  .order-peek .ask,
+  .order-peek > span {
+    white-space: nowrap;
+  }
+
+  .order-peek > span {
+    flex-shrink: 0;
+  }
+}
+
+/* The narrowest phones: a little less space around the order bar's parts, so
+   a large total still fits beside the item count and the button. */
+@media (max-width: 359.98px) {
+  .order-peek {
+    gap: 8px;
+    padding-left: 12px;
   }
 }
 

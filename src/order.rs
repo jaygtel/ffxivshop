@@ -20,9 +20,28 @@ pub struct Order {
 }
 
 pub struct Totals {
+    /// What the items with a price come to.
     pub gil: u64,
-    /// Lines without a price ("Ask").
+    /// Lines with a price.
+    pub priced: usize,
+    /// Lines with no price yet ("Ask").
     pub unpriced: usize,
+}
+
+impl Totals {
+    /// The total for a message: "12,000 gil", or "12,000 gil, plus the items
+    /// with no price yet". None when nothing has a price yet, because a total
+    /// of 0 gil would look free.
+    pub fn in_words(&self) -> Option<String> {
+        if self.priced == 0 {
+            return None;
+        }
+        let mut words = format!("{} gil", gil(self.gil));
+        if self.unpriced > 0 {
+            words.push_str(", plus the items with no price yet");
+        }
+        Some(words)
+    }
 }
 
 impl Order {
@@ -148,11 +167,15 @@ impl Order {
     pub fn totals(&self) -> Totals {
         let mut totals = Totals {
             gil: 0,
+            priced: 0,
             unpriced: 0,
         };
         for (index, qty) in self.lines.get() {
             match self.unit_price(index) {
-                Some(price) => totals.gil += price * u64::from(qty),
+                Some(price) => {
+                    totals.gil += price * u64::from(qty);
+                    totals.priced += 1;
+                }
                 None => totals.unpriced += 1,
             }
         }
@@ -184,12 +207,10 @@ impl Order {
             list.join(", ")
         );
         let totals = self.totals();
-        if totals.gil > 0 {
-            text.push_str(&format!(" That comes to {} gil", gil(totals.gil)));
-            if totals.unpriced > 0 {
-                text.push_str(" plus the items priced on request");
-            }
-            text.push('.');
+        match totals.in_words() {
+            Some(total) => text.push_str(&format!(" That comes to {total}.")),
+            None if totals.unpriced > 0 => text.push_str(" Please tell me the price."),
+            None => {}
         }
         if self.using_own_mats() {
             text.push_str(" I'll bring the materials.");
@@ -212,15 +233,15 @@ impl Order {
                     "- {qty}x {name} ({} gil)\n",
                     gil(price * u64::from(qty))
                 )),
-                None => text.push_str(&format!("- {qty}x {name} (price on request)\n")),
+                None => text.push_str(&format!("- {qty}x {name} (no price yet)\n")),
             }
         }
         let totals = self.totals();
-        text.push_str(&format!("Total: {} gil", gil(totals.gil)));
-        if totals.unpriced > 0 {
-            text.push_str(" plus the items priced on request");
+        match totals.in_words() {
+            Some(total) => text.push_str(&format!("Total: {total}\n")),
+            None if totals.unpriced > 0 => text.push_str("Please tell me the price.\n"),
+            None => {}
         }
-        text.push('\n');
         if self.using_own_mats() {
             text.push_str("I'll bring the materials.\n");
         }
@@ -234,5 +255,39 @@ impl Order {
             text.push_str(&format!("My character: {}\n", me.trim()));
         }
         text.trim_end().to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Totals;
+
+    fn totals(gil: u64, priced: usize, unpriced: usize) -> Totals {
+        Totals {
+            gil,
+            priced,
+            unpriced,
+        }
+    }
+
+    #[test]
+    fn a_priced_order_gives_its_total() {
+        assert_eq!(
+            totals(12_000, 2, 0).in_words().as_deref(),
+            Some("12,000 gil")
+        );
+    }
+
+    #[test]
+    fn items_with_no_price_are_named_after_the_total() {
+        assert_eq!(
+            totals(12_000, 1, 1).in_words().as_deref(),
+            Some("12,000 gil, plus the items with no price yet")
+        );
+    }
+
+    #[test]
+    fn an_order_with_no_prices_has_no_total_rather_than_zero() {
+        assert_eq!(totals(0, 0, 2).in_words(), None);
     }
 }

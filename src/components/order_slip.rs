@@ -87,13 +87,12 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                     <div class="order-total">
                         <span>"Total"</span>
                         <strong>
-                            <GilIcon />
-                            {move || gil(order.totals().gil)}
-                            <span class="sr-only">" gil"</span>
+                            <TotalAmount order />
                         </strong>
                     </div>
                     <p class="order-small" hidden=move || order.totals().unpriced == 0>
-                        "Plus the items priced on request."
+                        "Items marked " <em>"Ask"</em>
+                        " have no price yet. I'll tell you the price when you send me your order."
                     </p>
                     <p class="order-small">
                         {move || {
@@ -218,8 +217,7 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                 }}
             </span>
             <strong>
-                <GilIcon />
-                {move || gil(order.totals().gil)}
+                <TotalAmount order />
             </strong>
             <button
                 type="button"
@@ -229,6 +227,28 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                 "View order"
             </button>
         </div>
+    }
+}
+
+/// The order's total, worded like the shop list so it never shows a 0 that
+/// looks free: "Ask" when nothing in the order has a price yet, and "+ Ask"
+/// after the gil when only some of it does.
+#[component]
+fn TotalAmount(order: Order) -> impl IntoView {
+    move || {
+        let totals = order.totals();
+        let ask = totals.unpriced > 0;
+        if totals.priced == 0 && ask {
+            view! { <em class="ask">"Ask"</em> }.into_any()
+        } else {
+            view! {
+                <GilIcon />
+                {gil(totals.gil)}
+                <span class="sr-only">" gil"</span>
+                {ask.then(|| view! { <span class="ask">" + " <em>"Ask"</em></span> })}
+            }
+            .into_any()
+        }
     }
 }
 
