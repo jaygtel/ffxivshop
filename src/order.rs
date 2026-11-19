@@ -1,11 +1,19 @@
 //! The visitor's order: what they've picked, how many, and the messages they
-//! can copy to send you. It's saved in their browser so it survives a reload.
+//! can copy to send you. It's saved in their browser so it survives a reload,
+//! and cleared once it has gone 12 hours without a change.
 
 use crate::browser;
 use crate::model::{Ready, Shop, gil};
 use leptos::prelude::*;
+use std::time::Duration;
 
 const STORAGE_KEY: &str = "ffxiv-shop.order";
+
+/// The cookie that keeps a saved order. Each change to the order sets it
+/// again for 12 hours; when the browser deletes it, the order is cleared.
+/// Its value is the time it runs out, in milliseconds since 1970.
+const KEEP_COOKIE: &str = "ffxiv-shop.order-expires";
+const KEEP_FOR_SECONDS: u32 = 12 * 60 * 60;
 
 #[derive(Clone, Copy)]
 pub struct Order {
@@ -79,8 +87,67 @@ impl Order {
             character: RwSignal::new(character),
             note: RwSignal::new(note),
         };
-        Effect::new(move |_| browser::save(STORAGE_KEY, &order.saved_text()));
+        // An order left for 12 hours is gone before the page shows it.
+        order.forget_if_stale();
+
+        Effect::new(move |before: Option<String>| {
+            let text = order.saved_text();
+            browser::save(STORAGE_KEY, &text);
+            if !order.holds_anything() {
+                // Nothing left to keep.
+                browser::set_cookie(KEEP_COOKIE, "", 0);
+            } else if before.is_some_and(|before| before != text) {
+                // A change, so the 12 hours start again. Opening the page
+                // isn't a change: the order keeps the time it had.
+                let until = browser::now() + f64::from(KEEP_FOR_SECONDS) * 1000.0;
+                browser::set_cookie(KEEP_COOKIE, &format!("{until:.0}"), KEEP_FOR_SECONDS);
+            }
+            text
+        });
+
+        // While the page is open, it checks once a minute, and straight away
+        // when the visitor comes back to the tab or returns to the page with
+        // Back, so an order left open overnight goes too.
+        let check = move || order.forget_if_stale();
+        let every_minute = set_interval_with_handle(check, Duration::from_secs(60)).ok();
+        let on_return = window_event_listener_untyped("visibilitychange", move |_| check());
+        let on_back = window_event_listener_untyped("pageshow", move |_| check());
+        on_cleanup(move || {
+            if let Some(timer) = every_minute {
+                timer.clear();
+            }
+            on_return.remove();
+            on_back.remove();
+        });
         order
+    }
+
+    /// Clears the whole order (items, note, materials tick and character)
+    /// once it has gone 12 hours without a change, which is when the browser
+    /// deletes its cookie. Where cookies are turned off, there's no cookie to
+    /// go by, so the order is kept.
+    fn forget_if_stale(&self) {
+        if !self.holds_anything() || !browser::cookies_enabled() {
+            return;
+        }
+        let fresh = browser::cookie(KEEP_COOKIE)
+            .and_then(|until| until.parse::<f64>().ok())
+            .is_some_and(|until| browser::now() < until);
+        if !fresh {
+            self.lines.set(Vec::new());
+            self.own_mats.set(false);
+            self.character.set(String::new());
+            self.note.set(String::new());
+        }
+    }
+
+    /// Whether there's anything to save: items, the materials tick, a
+    /// character name or a note.
+    fn holds_anything(&self) -> bool {
+        self.lines.with_untracked(|lines| !lines.is_empty())
+            || self.own_mats.get_untracked()
+            || self.character.with_untracked(|me| !me.is_empty())
+            || self.note.with_untracked(|note| !note.is_empty())
     }
 
     fn saved_text(&self) -> String {

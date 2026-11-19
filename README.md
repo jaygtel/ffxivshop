@@ -347,6 +347,21 @@ Cinzel and Cormorant Garamond (SIL Open Font License). The site also serves
 `logo.svg`, `hero.svg`, `favicon.svg`, `favicon.ico`, `og-card.png`,
 `apple-touch-icon.png` and `intro.js`.
 
+## Visitors' orders
+
+A visitor's order (the items, the note, the "I'll bring the materials" tick and
+their character name) is saved in their own browser, so it survives a reload.
+It's never sent to the server.
+
+It's kept for 12 hours after its last change, then cleared, unless they clear
+it first. A small cookie, `ffxiv-shop.order-expires`, keeps the time: each
+change sets it again for 12 hours (opening the page doesn't), and once the
+browser has deleted it, the page clears the whole order. That happens when the
+page is next opened, or within a minute if it's still open. The cookie holds
+only that time, and the server ignores it. **Clear order** empties the item
+list but keeps the note, tick and name; those go when the 12 hours run out.
+Where a browser has cookies turned off, the order is kept with no time limit.
+
 ## Item links, tooltips and icons
 
 - Item names link to the official **Eorzea Database** on The Lodestone

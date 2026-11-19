@@ -40,6 +40,55 @@ pub fn save(key: &str, value: &str) {
     }
 }
 
+/// Reads a cookie this site has set.
+pub fn cookie(name: &str) -> Option<String> {
+    let cookies = html_document()?.cookie().ok()?;
+    cookies.split(';').find_map(|pair| {
+        let (key, value) = pair.trim().split_once('=')?;
+        (key == name).then(|| value.to_string())
+    })
+}
+
+/// Sets a cookie for this site that the browser deletes by itself after
+/// `max_age` seconds (0 deletes it straight away). It's for the page's own
+/// use: it goes along with requests to the site, but the server ignores it.
+pub fn set_cookie(name: &str, value: &str, max_age: u32) {
+    let Some(document) = html_document() else {
+        return;
+    };
+    // Secure wherever the site is served over HTTPS. It's left off on plain
+    // http://localhost (trunk serve), where some browsers would refuse it.
+    let https = web_sys::window()
+        .and_then(|w| w.location().protocol().ok())
+        .is_some_and(|protocol| protocol == "https:");
+    let secure = if https { "; Secure" } else { "" };
+    let _ = document.set_cookie(&format!(
+        "{name}={value}; Max-Age={max_age}; Path=/; SameSite=Lax{secure}"
+    ));
+}
+
+/// Whether this browser keeps cookies for the site.
+pub fn cookies_enabled() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    // Looked up dynamically, as web-sys doesn't have it.
+    let navigator: JsValue = window.navigator().into();
+    js_sys::Reflect::get(&navigator, &"cookieEnabled".into())
+        .ok()
+        .and_then(|enabled| enabled.as_bool())
+        .unwrap_or(false)
+}
+
+/// The time now, in milliseconds since 1970.
+pub fn now() -> f64 {
+    js_sys::Date::now()
+}
+
+fn html_document() -> Option<web_sys::HtmlDocument> {
+    web_sys::window()?.document()?.dyn_into().ok()
+}
+
 /// Copies text to the clipboard. Returns false if the browser refused, so the
 /// caller can show the text for copying by hand.
 pub async fn copy(text: &str) -> bool {
