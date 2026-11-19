@@ -272,14 +272,24 @@ container in `compose.yaml`. `git status` should never list `.env`.
 Your Cloudflare Origin certificate and its private key belong with Traefik's
 own config. Never copy them into this repository.
 
-## The logo and hero
+## The look, logo and hero
 
-`assets/logo.svg` and `assets/favicon.svg` are the A&A monogram as transparent
-SVGs. They use dark letters on light backgrounds and light letters on dark ones
-(following the viewer's light or dark mode), and every letter has a thin
-contrasting edge, so the mark stays readable even on a background that doesn't
-match. A page that inlines it can choose its colours with the `--aa-ink`,
-`--aa-accent` and `--aa-edge` CSS custom properties.
+The site is styled like the Aether & Allure coming-soon page: a night sky of
+deep indigo glows with a slow aurora, twinkling stars and motes of aether
+(drawn by `src/components/sky.rs`), and dark glass windows framed in gold with
+gold corner pieces. Headings and labels are set in **Cinzel**, everything else
+in **Cormorant Garamond**, the same fonts as the coming-soon page. The colours
+are listed at the top of `style/main.css`.
+
+`assets/logo.svg` is the emblem: an aether crystal on a night-blue disc in gold
+rings, on a transparent background. The disc carries its own contrast, so it
+works on any background; its outer ring turns a deeper gold on light
+backgrounds (following the viewer's light or dark mode). A page that inlines it
+can choose that gold with the `--aa-accent` CSS custom property.
+
+`assets/favicon.svg` and `assets/apple-touch-icon.png` are the coming-soon
+page's own: the crystal, outlined in gold, with light and dark versions in the
+SVG.
 
 `assets/favicon.ico` is a fallback copy of the favicon (16, 32 and 48 pixels, in
 its light-background colours) for places that can't show SVG, such as Google
@@ -288,22 +298,29 @@ Browsers that can show the SVG (Chrome, Edge, Firefox) still use it: the
 `sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome from
 choosing the ICO instead. If the favicon's design changes, remake the ICO too.
 
-`assets/hero.svg` is the preview card's design (monogram, «Master Artisan»,
-the shop's name and tagline) on a transparent background. It handles light and
-dark backgrounds the same way as the logo, and arranges itself for the space it
-has:
+`assets/hero.svg` is the opening lockup: the emblem, «Master Artisan», the
+shop's name in the coming-soon page's shimmering gold, its divider and the
+tagline, on a transparent background. It arranges itself for the space it has:
 
-- landscape, 900px and wider: monogram on the left, text on the right
-- landscape, under 900px: the same arrangement, with larger text for the width
-- narrower than 5:4 (phones, tablets held upright): stacked
+- landscape, 900px and wider: emblem on the left, text on the right
+- landscape, under 900px: the same arrangement, with larger small print for the width
+- narrower than 5:4 (phones, tablets held upright): stacked, with the name on
+  three lines as on the coming-soon page's phone layout
 
 It always sits centred in its space. The site opens with it: a full-screen,
 centred hero with an **Order Now** button that scrolls down to the shop, the
 shop's status and the crafting jobs. The site inlines the file, so it follows
-the browser window, and sets its colours with the custom properties above plus
-`--aa-muted` (the tagline) and `--aa-glow`. Opened on its own or used as an
-image, it follows its own box. As an image it has no fixed size: give it a
-width and the aspect ratio listed at the top of the file.
+the browser window, and it takes its night-sky colours from the page's dark
+colour scheme. Opened on its own or used as an image, it follows its own box,
+in gold and night blue on dark backgrounds or deeper golds and slate on light
+ones. As an image it has no fixed size: give it a width and the aspect ratio
+listed at the top of the file. Its rings turn, its crystal floats and its name
+shimmers, as on the coming-soon page; none of it moves for visitors who prefer
+reduced motion.
+
+`assets/og-card.png` is the preview image shown when the link is shared on
+Discord and elsewhere: the coming-soon page's preview card, with the shop's
+name, «Master Artisan», the tagline and the web address.
 
 Once the hero has scrolled away, a **Back to top** button fades into the
 bottom-right corner. On wide windows (about 1376px and up) the margin beside the
@@ -317,10 +334,9 @@ preview card. `name`, `title` and `tagline` in `shop.toml` are what screen
 readers hear, so keep them matching; different wording on screen means
 redrawing the hero.
 
-The letterforms are drawn from Cinzel, Cinzel Decorative and Alegreya Sans (SIL
-Open Font License). The site also serves `logo.svg`, `hero.svg`,
-`favicon.svg`, `favicon.ico`, `og-card.png` (the preview image shown when the
-link is shared on Discord and elsewhere) and `apple-touch-icon.png`.
+The letterforms are drawn from Cinzel and Cormorant Garamond (SIL Open Font
+License). The site also serves `logo.svg`, `hero.svg`, `favicon.svg`,
+`favicon.ico`, `og-card.png` and `apple-touch-icon.png`.
 
 ## Item links, tooltips and icons
 
@@ -351,7 +367,7 @@ src/model.rs            reads and checks shop.toml
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
 style/main.css          the look
-assets/                 monogram, favicon, hero, preview images, fonts
+assets/                 emblem, favicon, hero, preview images, fonts
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
 ```
@@ -361,8 +377,8 @@ LICENSE                 BSD 3-Clause License
 The code and site design are © 2026 Jason Telford, released under the
 [BSD 3-Clause License](LICENSE).
 
-Fonts: Cinzel, Cinzel Decorative and Alegreya Sans, under their own SIL Open
-Font License 1.1 (see `assets/fonts`).
+Fonts: Cinzel and Cormorant Garamond, under their own SIL Open Font License 1.1
+(see `assets/fonts`).
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a
 registered trademark of Square Enix Holdings Co., Ltd. This is an unofficial fan

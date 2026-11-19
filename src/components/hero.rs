@@ -1,4 +1,4 @@
-//! The opening screen: the hero drawing (assets/hero.svg: the monogram,
+//! The opening screen: the hero drawing (assets/hero.svg: the crystal emblem,
 //! «title», name and tagline), an Order Now link down to the shop, whether
 //! orders are open, and the crafting jobs. Centred and a full screen tall.
 
@@ -6,8 +6,8 @@ use crate::model::{CRAFTERS, Shop};
 use leptos::prelude::*;
 
 /// The same file that's published as /hero.svg, so the two never drift apart.
-/// It picks its own layout for the screen, and the page sets its colours
-/// through the --aa-* custom properties. Its words are part of the drawing, so
+/// It picks its own layout for the screen, and takes its night-sky colours
+/// from the page's dark colour scheme. Its words are part of the drawing, so
 /// screen readers get the name, title and tagline from shop.toml instead.
 const HERO: &str = include_str!("../../assets/hero.svg");
 
