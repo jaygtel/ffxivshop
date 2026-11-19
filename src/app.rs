@@ -10,6 +10,10 @@ use leptos::prelude::*;
 /// .env by build.rs, which has already checked it.
 const SHOP_TOML: &str = include_str!(concat!(env!("OUT_DIR"), "/shop.toml"));
 
+/// The ${SHOP_…} values that fell back to their examples because .env didn't
+/// set them, such as "SHOP_DISCORD,SHOP_EMAIL" (build.rs works this out).
+const EXAMPLES_IN_USE: &str = env!("EXAMPLES_IN_USE");
+
 #[component]
 pub fn App() -> impl IntoView {
     match Shop::from_toml(SHOP_TOML) {
@@ -46,7 +50,7 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
                     view! {
                         <p class="demo-notice" role="note">
                             <strong>"Sample shop."</strong>
-                            " The listings, prices and contact details here are examples. Edit shop.toml to make them yours, then set demo = false."
+                            {sample_notice(EXAMPLES_IN_USE)}
                         </p>
                     }
                 })}
@@ -67,6 +71,25 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
     }
 }
 
+/// What the sample-shop notice says after "Sample shop.". The contact details
+/// are only called examples while they are: once .env sets them, they're real.
+fn sample_notice(examples_in_use: &str) -> String {
+    let example = |name: &str| examples_in_use.split(',').any(|used| used == name);
+    let contact = match (example("SHOP_DISCORD"), example("SHOP_EMAIL")) {
+        (true, true) => Some("contact details"),
+        (true, false) => Some("Discord name"),
+        (false, true) => Some("email address"),
+        (false, false) => None,
+    };
+    match contact {
+        Some(contact) => format!(
+            " The listings, prices and {contact} here are examples. Edit shop.toml and .env to make them yours, then set demo = false."
+        ),
+        None => " The listings and prices here are examples. Edit shop.toml to make them yours, then set demo = false."
+            .to_string(),
+    }
+}
+
 /// Only seen if shop.toml is broken in a way build.rs couldn't catch.
 #[component]
 fn SetupProblem(problems: String) -> impl IntoView {
@@ -81,5 +104,28 @@ fn SetupProblem(problems: String) -> impl IntoView {
                 </div>
             </section>
         </main>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sample_notice;
+
+    #[test]
+    fn the_notice_calls_only_the_examples_examples() {
+        // .env set both contacts, so only the listings and prices are examples.
+        assert_eq!(
+            sample_notice(""),
+            " The listings and prices here are examples. Edit shop.toml to make them yours, then set demo = false."
+        );
+        assert_eq!(
+            sample_notice("SHOP_DISCORD,SHOP_EMAIL"),
+            " The listings, prices and contact details here are examples. Edit shop.toml and .env to make them yours, then set demo = false."
+        );
+        assert!(sample_notice("SHOP_DISCORD").contains(" prices and Discord name here "));
+        assert!(sample_notice("SHOP_EMAIL").contains(" prices and email address here "));
+        // A value of your own that's still an example doesn't touch the contacts.
+        assert_eq!(sample_notice("SHOP_LINKSHELL"), sample_notice(""));
+        assert_eq!(sample_notice("SHOP_EMAILS"), sample_notice(""));
     }
 }

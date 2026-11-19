@@ -65,6 +65,14 @@ fn main() {
     if !shop.shop.demo && !filled.examples.is_empty() {
         fail_live(&filled.examples);
     }
+    // Tells the sample-shop notice (src/app.rs) which values are still
+    // examples, such as "SHOP_DISCORD,SHOP_EMAIL".
+    let names: Vec<&str> = filled
+        .examples
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect();
+    println!("cargo:rustc-env=EXAMPLES_IN_USE={}", names.join(","));
     for (name, example) in &filled.examples {
         println!(
             "cargo:warning=shop.toml: {name} isn't set in .env, so the page shows the example \"{example}\""
