@@ -17,7 +17,7 @@ Everything on the page comes from **`shop.toml`**. Each part is commented:
 | `[site]`       | The site address and the copyright notice in the footer                  |
 | `[shop]`       | Name, owner, open/busy/closed status, crafter levels, ordering steps      |
 | `[location]`   | The house where buyers collect orders: world, district, ward and plot     |
-| `[contact]`    | `/tell`, friend request, message book, Discord, email, other links        |
+| `[contact]`    | `/tell`, friend request, message book, Discord, email, other links (your Discord name and email come from `.env`) |
 | `[[category]]` | The tabs above the item list                                             |
 | `[[item]]`     | One per listing: name, category, price in gil, ready time, HQ, notes     |
 
@@ -28,6 +28,11 @@ cheaper price for buyers who bring the materials.
 
 If something in `shop.toml` is wrong, the build stops and says exactly what to fix.
 When your own details are in, set `demo = false` to remove the "sample shop" notice.
+
+Your Discord name and email aren't written in `shop.toml`. They come from
+`.env` (`SHOP_DISCORD` and `SHOP_EMAIL`), so they stay out of the code and
+GitHub; see [Settings and secrets](#settings-and-secrets-env). The page still
+shows them on its contact card, as it has to.
 
 ### Adding items
 
@@ -65,6 +70,12 @@ computer only needs two things:
    minutes; after that it starts in seconds.
 3. When it's ready, a terminal shows the installed tool versions. Zed's
    terminals, tasks and rust-analyzer now all run inside the container.
+4. Make your `.env` and fill in your Discord name and email (see
+   [Settings and secrets](#settings-and-secrets-env)):
+
+   ```sh
+   cp .env.example .env
+   ```
 
 ### Day to day
 
@@ -184,13 +195,19 @@ On the server:
 ```sh
 git clone <your GitHub repository URL> aether-and-allure
 cd aether-and-allure
+cp .env.example .env               # then fill in SHOP_DISCORD and SHOP_EMAIL
 docker compose up -d --build
 ```
 
-The first build compiles the site and takes several minutes. The container
-joins your existing `traefik_proxy` network and publishes no ports on the
-server; Traefik reaches it by name through Docker's DNS. Then give Traefik the
-route by copying the dynamic config into the folder its file provider reads:
+The first build compiles the site and takes several minutes. If the build
+warns that SHOP_DISCORD or SHOP_EMAIL isn't set, the site shows the examples
+from `shop.toml` instead: fill them in in `.env` and run the `up` command
+again.
+
+The container joins your existing `traefik_proxy` network and publishes no
+ports on the server; Traefik reaches it by name through Docker's DNS. Then give
+Traefik the route by copying the dynamic config into the folder its file
+provider reads:
 
 ```sh
 cp deploy/traefik/aether-allure.yml /path/to/traefik/dynamic/
@@ -236,7 +253,8 @@ docker compose up -d --build
 
 Compiled dependencies are cached between builds, so updates are quick. Traefik
 keeps routing to the new container by name; copy `aether-allure.yml` again only
-if that file itself changed.
+if that file itself changed. After changing `.env` on the server, run
+`docker compose up -d --build` too: the values are built into the site.
 
 Every month or so, run `docker compose build --pull` before `up` to pick up
 security fixes in the nginx and Rust base images, and `docker image prune` to
@@ -257,17 +275,44 @@ appear with Traefik's address there; Traefik's access log has the real ones).
 
 ## Settings and secrets (`.env`)
 
-Anything secret goes in `.env`, created from `.env.example`. The site needs no
-settings or secrets today, so `.env` is optional. It is:
+`.env` holds your shop details that shouldn't live in the code, and anything
+secret the project ever needs. Make it from the template, on your computer and
+on the server, then fill in the values:
+
+```sh
+cp .env.example .env
+```
+
+It is:
 
 - ignored by git (see `.gitignore`), so it never reaches GitHub, and
 - ignored by Docker (see `.dockerignore`), so it's never copied into an image.
 
-The site itself has no secrets: it's static, and everything in `shop.toml` is
-shown on the page. Keep it that way: never put passwords, tokens or keys in
-`shop.toml` or the code. If you add something secret later, put it in `.env`,
-add its name (without the value) to `.env.example`, and pass it to the
-container in `compose.yaml`. `git status` should never list `.env`.
+**Shop details.** `SHOP_DISCORD` and `SHOP_EMAIL` hold your Discord username and
+email. `shop.toml` reads them as `${SHOP_DISCORD:-your.discord.name}` and
+`${SHOP_EMAIL:-commissions@example.com}`: the value from `.env`, or the example
+after `:-` when it isn't set. When an example is used, the build says so with a
+warning. Any double-quoted value in `shop.toml` can work the same way, with a
+name of its own that starts with `SHOP_`.
+
+- These aren't secrets: every visitor sees them on the contact card. Keeping
+  them in `.env` keeps them out of the code and GitHub.
+- Only names that start with `SHOP_` are read, and whatever they hold is
+  published on the page. So never give a real secret a `SHOP_` name.
+- The values are built into the site:
+  - on your computer, the build reads `.env` directly, and `trunk serve`
+    rebuilds by itself when you save it;
+  - on the server, Docker Compose reads `.env` and passes the values to the
+    build (`args:` in `compose.yaml`), so run `docker compose up -d --build`
+    after changing it.
+- Keep a `.env` on your computer even if you leave the values empty. Without
+  one, every build has to recompile the shop.
+
+**Secrets.** The site itself has no secrets: it's static. Never put passwords,
+tokens or keys in `shop.toml` or the code. If you add something secret later,
+put it in `.env` under a name that doesn't start with `SHOP_`, add its name
+(without the value) to `.env.example`, and pass it to the container under
+`environment:` in `compose.yaml`. `git status` should never list `.env`.
 
 Your Cloudflare Origin certificate and its private key belong with Traefik's
 own config. Never copy them into this repository.
@@ -403,13 +448,14 @@ Dockerfile              the dev container and the server image (four stages)
 compose.yaml            runs the site on your server
 deploy/nginx.conf       the web server's settings, inside the container
 deploy/traefik/         the Traefik route for aetherandallure.com
-.env.example            template for .env (server settings and secrets)
+.env.example            template for .env (your Discord name and email, and any secrets)
 .devcontainer/          dev container settings and setup script
 .zed/                   Zed project settings and tasks
 rust-toolchain.toml     the Rust version and components
 index.html, Trunk.toml  page shell and build settings
-build.rs                checks shop.toml at build time
+build.rs                fills in and checks shop.toml at build time
 src/model.rs            reads and checks shop.toml
+src/vars.rs             fills in shop.toml's ${SHOP_…} values from .env
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
 assets/css/main.css     the look

@@ -178,6 +178,11 @@ WORKDIR /home/${USERNAME}
 # server takes seconds rather than minutes.
 FROM tools AS build
 
+# The shop details shop.toml reads from .env, passed in by compose.yaml (.env
+# itself is never copied into a build). build.rs picks them up from here.
+ARG SHOP_DISCORD=
+ARG SHOP_EMAIL=
+
 WORKDIR /app
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

@@ -7,6 +7,9 @@
 #  Adding items: write the in-game name, category, price and ready time,
 #  then run   cargo run -p shop-tools -- fill
 #  to look up the Eorzea Database link, icon, item level and jobs for you.
+#
+#  Your Discord name and email come from .env rather than this file: see
+#  [contact] below.
 # ─────────────────────────────────────────────────────────────────────────────
 
 [site]
@@ -68,9 +71,14 @@ tell = true                              # shows "/tell Sigrid Halvorsen@Sagitta
 friend_request = true
 message_book = true                      # visitors can leave a note in the estate's message book
 # linkshell = "Garden Crafters (CWLS)"
-discord = "your.discord.name"            # your Discord username
+# Your Discord username and email are set in .env, as SHOP_DISCORD and
+# SHOP_EMAIL, so they stay out of the code (the page still shows them).
+# Where they aren't set, the examples after :- are shown instead, and the
+# build warns you. Any "double-quoted" value in this file can do the same
+# with a name of its own that starts with SHOP_.
+discord = "${SHOP_DISCORD:-your.discord.name}"
 # discord_server = "https://discord.gg/your-invite"
-email = "commissions@example.com"        # e.g. an address on aetherandallure.com
+email = "${SHOP_EMAIL:-commissions@example.com}"
 
 # [[contact.links]]
 # label = "Bluesky"

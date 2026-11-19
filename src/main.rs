@@ -6,6 +6,10 @@ mod browser;
 mod components;
 mod model;
 mod order;
+// Fills in shop.toml's ${SHOP_…} values. build.rs uses it; it's compiled here
+// only so its tests run with `cargo test`.
+#[cfg(test)]
+mod vars;
 
 fn main() {
     console_error_panic_hook::set_once();

@@ -6,8 +6,9 @@ use crate::model::{EDB_TOOLTIP_SCRIPT, Shop};
 use crate::order::Order;
 use leptos::prelude::*;
 
-/// shop.toml is built into the site. build.rs has already checked it.
-const SHOP_TOML: &str = include_str!("../shop.toml");
+/// shop.toml is built into the site, with its ${SHOP_…} values filled in from
+/// .env by build.rs, which has already checked it.
+const SHOP_TOML: &str = include_str!(concat!(env!("OUT_DIR"), "/shop.toml"));
 
 #[component]
 pub fn App() -> impl IntoView {
