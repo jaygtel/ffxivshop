@@ -6,31 +6,55 @@
     <title>Aether &amp; Allure</title>
     <meta name="description" content="Crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV by Sigrid Halvorsen.">
     <meta name="author" content="Jason Telford">
-    <meta name="theme-color" content="#141a2e">
+    <meta name="theme-color" content="#060a1a">
+    <meta name="color-scheme" content="dark">
     <link rel="canonical" href="https://aetherandallure.com/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Aether &amp; Allure">
     <meta property="og:title" content="Aether &amp; Allure">
     <meta property="og:description" content="Crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV by Sigrid Halvorsen.">
     <meta property="og:url" content="https://aetherandallure.com/">
-    <meta property="og:image" content="https://aetherandallure.com/og-card.png">
+    <meta property="og:image" content="https://aetherandallure.com/assets/img/og-card.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Aether &amp; Allure, Master Artisan: crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image:alt" content="Aether &amp; Allure, Master Artisan: crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.">
+    <!-- The fonts start loading with the page rather than after the shop
+         appears, so its text doesn't change font as it arrives. -->
+    <link rel="preload" href="assets/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/cormorant-garamond-italic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/alegreya-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/alegreya-sans-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/alegreya-sans-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 
-    <link data-trunk rel="rust" data-bin="ffxiv-shop" data-wasm-opt="z">
-    <link data-trunk rel="css" href="style/main.css">
-    <link data-trunk rel="copy-dir" href="assets/fonts">
-    <link data-trunk rel="copy-file" href="assets/logo.svg">
-    <link data-trunk rel="copy-file" href="assets/hero.svg">
-    <link data-trunk rel="copy-file" href="assets/favicon.svg">
-    <link data-trunk rel="copy-file" href="assets/favicon.ico">
-    <link data-trunk rel="copy-file" href="assets/og-card.png">
-    <link data-trunk rel="copy-file" href="assets/apple-touch-icon.png">
+    <!-- The hero's opening animation, as on the coming-soon page. It runs
+         before the shop's own script, so it's ready when the hero appears. -->
+    <script src="assets/js/intro.js" defer></script>
+
+    <!-- What Trunk builds and copies into the site. The site keeps the
+         project's layout: the shop's script and WebAssembly go in assets/js,
+         the stylesheet in assets/css, and the fonts, images and intro.js in
+         the same assets/ folders as here. favicon.ico and apple-touch-icon.png
+         go at the top level instead, where browsers, Google and iPhones ask
+         for them by name. -->
+    <link data-trunk rel="rust" data-bin="ffxiv-shop" data-wasm-opt="z" data-target-path="assets/js">
+    <link data-trunk rel="css" href="assets/css/main.css" data-target-path="assets/css">
+    <link data-trunk rel="copy-dir" href="assets/fonts" data-target-path="assets/fonts">
+    <link data-trunk rel="copy-file" href="assets/js/intro.js" data-target-path="assets/js">
+    <link data-trunk rel="copy-file" href="assets/img/favicon.svg" data-target-path="assets/img">
+    <link data-trunk rel="copy-file" href="assets/img/og-card.png" data-target-path="assets/img">
+    <link data-trunk rel="copy-file" href="assets/img/logo.svg" data-target-path="assets/img">
+    <link data-trunk rel="copy-file" href="assets/img/hero.svg" data-target-path="assets/img">
+    <link data-trunk rel="copy-file" href="assets/img/favicon.ico">
+    <link data-trunk rel="copy-file" href="assets/img/apple-touch-icon.png">
     <!-- Favicon: the SVG wherever a browser can show it (it follows light and
          dark mode), and favicon.ico for everything that can't, such as Google
          Search results and older Safari. The ICO's sizes="32x32" stops Chrome
          from choosing it over the SVG. -->
     <link rel="icon" href="favicon.ico" sizes="32x32">
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
   </head>
   <body>

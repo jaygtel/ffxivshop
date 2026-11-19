@@ -17,7 +17,7 @@ Everything on the page comes from **`shop.toml`**. Each part is commented:
 | `[site]`       | The site address and the copyright notice in the footer                  |
 | `[shop]`       | Name, owner, open/busy/closed status, crafter levels, ordering steps      |
 | `[location]`   | The house where buyers collect orders: world, district, ward and plot     |
-| `[contact]`    | `/tell`, friend request, message book, Discord, email, other links        |
+| `[contact]`    | `/tell`, friend request, message book, Discord, email, other links (your Discord name and email come from `.env`) |
 | `[[category]]` | The tabs above the item list                                             |
 | `[[item]]`     | One per listing: name, category, price in gil, ready time, HQ, notes     |
 
@@ -28,6 +28,13 @@ cheaper price for buyers who bring the materials.
 
 If something in `shop.toml` is wrong, the build stops and says exactly what to fix.
 When your own details are in, set `demo = false` to remove the "sample shop" notice.
+
+Your Discord name and email aren't written in `shop.toml`. They come from
+`.env` (`SHOP_DISCORD` and `SHOP_EMAIL`), so they stay out of the code and
+GitHub; see [Settings and secrets](#settings-and-secrets-env). The page still
+shows them on its contact card, as it has to. If one isn't set, the page shows
+an example in its place. Once you set `demo = false`, the build stops rather
+than do that, so the live site never shows the examples.
 
 ### Adding items
 
@@ -65,6 +72,12 @@ computer only needs two things:
    minutes; after that it starts in seconds.
 3. When it's ready, a terminal shows the installed tool versions. Zed's
    terminals, tasks and rust-analyzer now all run inside the container.
+4. Make your `.env` and fill in your Discord name and email (see
+   [Settings and secrets](#settings-and-secrets-env)):
+
+   ```sh
+   cp .env.example .env
+   ```
 
 ### Day to day
 
@@ -184,13 +197,20 @@ On the server:
 ```sh
 git clone <your GitHub repository URL> aether-and-allure
 cd aether-and-allure
+cp .env.example .env               # then fill in SHOP_DISCORD and SHOP_EMAIL
 docker compose up -d --build
 ```
 
-The first build compiles the site and takes several minutes. The container
-joins your existing `traefik_proxy` network and publishes no ports on the
-server; Traefik reaches it by name through Docker's DNS. Then give Traefik the
-route by copying the dynamic config into the folder its file provider reads:
+The first build compiles the site and takes several minutes. If SHOP_DISCORD
+or SHOP_EMAIL isn't set in `.env`, a live shop (`demo = false`) stops the build
+and says which, while a sample shop (`demo = true`) builds with the examples
+from `shop.toml` and a warning. Either way, fill them in in `.env` and run the
+`up` command again.
+
+The container joins your existing `traefik_proxy` network and publishes no
+ports on the server; Traefik reaches it by name through Docker's DNS. Then give
+Traefik the route by copying the dynamic config into the folder its file
+provider reads:
 
 ```sh
 cp deploy/traefik/aether-allure.yml /path/to/traefik/dynamic/
@@ -236,7 +256,8 @@ docker compose up -d --build
 
 Compiled dependencies are cached between builds, so updates are quick. Traefik
 keeps routing to the new container by name; copy `aether-allure.yml` again only
-if that file itself changed.
+if that file itself changed. After changing `.env` on the server, run
+`docker compose up -d --build` too: the values are built into the site.
 
 Every month or so, run `docker compose build --pull` before `up` to pick up
 security fixes in the nginx and Rust base images, and `docker image prune` to
@@ -257,53 +278,115 @@ appear with Traefik's address there; Traefik's access log has the real ones).
 
 ## Settings and secrets (`.env`)
 
-Anything secret goes in `.env`, created from `.env.example`. The site needs no
-settings or secrets today, so `.env` is optional. It is:
+`.env` holds your shop details that shouldn't live in the code, and anything
+secret the project ever needs. Make it from the template, on your computer and
+on the server, then fill in the values:
+
+```sh
+cp .env.example .env
+```
+
+It is:
 
 - ignored by git (see `.gitignore`), so it never reaches GitHub, and
 - ignored by Docker (see `.dockerignore`), so it's never copied into an image.
 
-The site itself has no secrets: it's static, and everything in `shop.toml` is
-shown on the page. Keep it that way: never put passwords, tokens or keys in
-`shop.toml` or the code. If you add something secret later, put it in `.env`,
-add its name (without the value) to `.env.example`, and pass it to the
-container in `compose.yaml`. `git status` should never list `.env`.
+**Shop details.** `SHOP_DISCORD` and `SHOP_EMAIL` hold your Discord username and
+email. `shop.toml` reads them as `${SHOP_DISCORD:-your.discord.name}` and
+`${SHOP_EMAIL:-commissions@example.com}`: the value from `.env`, or the example
+after `:-` when it isn't set. When an example is used, the build says so with a
+warning. Once the site is live (`demo = false`), it stops instead and lists
+what to set, so visitors never see the examples. Any double-quoted value in
+`shop.toml` can work the same way, with a name of its own that starts with
+`SHOP_`.
+
+- These aren't secrets: every visitor sees them on the contact card. Keeping
+  them in `.env` keeps them out of the code and GitHub.
+- Only names that start with `SHOP_` are read, and whatever they hold is
+  published on the page. So never give a real secret a `SHOP_` name.
+- The values are built into the site:
+  - on your computer, the build reads `.env` directly, and `trunk serve`
+    rebuilds by itself when you save it;
+  - on the server, Docker Compose reads `.env` and passes the values to the
+    build (`args:` in `compose.yaml`), so run `docker compose up -d --build`
+    after changing it. If that build stops, the site that's already running
+    carries on as it was.
+- Keep a `.env` on your computer even if you leave the values empty. Without
+  one, every build has to recompile the shop.
+
+**Secrets.** The site itself has no secrets: it's static. Never put passwords,
+tokens or keys in `shop.toml` or the code. If you add something secret later,
+put it in `.env` under a name that doesn't start with `SHOP_`, add its name
+(without the value) to `.env.example`, and pass it to the container under
+`environment:` in `compose.yaml`. `git status` should never list `.env`.
 
 Your Cloudflare Origin certificate and its private key belong with Traefik's
 own config. Never copy them into this repository.
 
-## The logo and hero
+## The look, logo and hero
 
-`assets/logo.svg` and `assets/favicon.svg` are the A&A monogram as transparent
-SVGs. They use dark letters on light backgrounds and light letters on dark ones
-(following the viewer's light or dark mode), and every letter has a thin
-contrasting edge, so the mark stays readable even on a background that doesn't
-match. A page that inlines it can choose its colours with the `--aa-ink`,
-`--aa-accent` and `--aa-edge` CSS custom properties.
+The site is styled like the Aether & Allure coming-soon page: a night sky of
+deep indigo glows with a slow aurora, twinkling stars and motes of aether
+(drawn by `src/components/sky.rs`), and dark glass windows framed in gold with
+gold corner pieces. Headings and labels are set in **Cinzel** and the hero's
+lines in **Cormorant Garamond** italic, the same fonts as the coming-soon page.
+Everything else, the text in the windows included, is set in **Alegreya Sans**,
+which reads easily at small sizes. The colours are listed at the top of
+`assets/css/main.css`.
 
-`assets/favicon.ico` is a fallback copy of the favicon (16, 32 and 48 pixels, in
-its light-background colours) for places that can't show SVG, such as Google
-Search results, older Safari and tools that only ever ask for `/favicon.ico`.
-Browsers that can show the SVG (Chrome, Edge, Firefox) still use it: the
-`sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome from
-choosing the ICO instead. If the favicon's design changes, remake the ICO too.
+`assets/img/logo.svg` is the emblem: an aether crystal on a night-blue disc in
+gold rings, on a transparent background. The disc carries its own contrast, so
+it works on any background; its outer ring turns a deeper gold on light
+backgrounds (following the viewer's light or dark mode). A page that inlines it
+can choose that gold with the `--aa-accent` CSS custom property.
 
-`assets/hero.svg` is the preview card's design (monogram, «Master Artisan»,
-the shop's name and tagline) on a transparent background. It handles light and
-dark backgrounds the same way as the logo, and arranges itself for the space it
-has:
+`assets/img/favicon.svg` and `assets/img/apple-touch-icon.png` are the
+coming-soon page's own: the crystal, outlined in gold, with light and dark
+versions in the SVG.
 
-- landscape, 900px and wider: monogram on the left, text on the right
-- landscape, under 900px: the same arrangement, with larger text for the width
-- narrower than 5:4 (phones, tablets held upright): stacked
+`assets/img/favicon.ico` is a fallback copy of the favicon (16, 32 and 48
+pixels, in its light-background colours) for places that can't show SVG, such
+as Google Search results, older Safari and tools that only ever ask for
+`/favicon.ico`. Browsers that can show the SVG (Chrome, Edge, Firefox) still use
+it: the `sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome
+from choosing the ICO instead. If the favicon's design changes, remake the ICO
+too.
 
-It always sits centred in its space. The site opens with it: a full-screen,
-centred hero with an **Order Now** button that scrolls down to the shop, the
-shop's status and the crafting jobs. The site inlines the file, so it follows
-the browser window, and sets its colours with the custom properties above plus
-`--aa-muted` (the tagline) and `--aa-glow`. Opened on its own or used as an
-image, it follows its own box. As an image it has no fixed size: give it a
-width and the aspect ratio listed at the top of the file.
+The site opens with a full-screen hero built like the coming-soon page: the
+emblem floating over a panel of dark glass framed in gold, holding «Master
+Artisan», the shop's name in shimmering gold, the divider, whether orders are
+open (where the coming-soon page says "Coming soon"), the tagline and status
+note, and an **Order Now** button that scrolls down to the shop. Its words
+come from `shop.toml` (`title`, `name`, `status`, `tagline`, `status_note`).
+On shorter screens (most laptops, small phones, phones on their side) it gets
+more compact, so it always fits on one screen. The crafting jobs and their
+levels (`[shop.crafters]`) sit just above the wares window.
+
+When the page opens, `assets/js/intro.js` plays the coming-soon page's intro,
+about six seconds: the name is written in aether fire, glides up into its
+place while the words around it fade in, then the crystal appears and the gold
+border draws itself. Any click, tap, key or scroll skips straight to the
+finished hero. It doesn't play for visitors who prefer reduced motion, or when
+the page opens at a link such as `#housing`, and if the script can't load the
+hero simply shows finished. Its letter outlines are drawn for the name
+"Aether & Allure"; with another name the hero shows without the intro. The
+emblem's rings turn, its crystal floats and the name shimmers, as on the
+coming-soon page (none of it moves with reduced motion).
+
+`assets/img/hero.svg` is the same lockup as a standalone picture (the emblem,
+«Master Artisan», the name and the tagline, on a transparent background),
+published as `/assets/img/hero.svg` for use elsewhere; the page itself doesn't
+use it. It
+arranges itself for the space it has (emblem beside the text in landscape,
+stacked when narrower than 5:4), and draws in gold and night blue on dark
+backgrounds or deeper golds and slate on light ones. As an image it has no
+fixed size: give it a width and the aspect ratio listed at the top of the file.
+Its lettering is drawn as shapes, so its words are fixed, as on the preview
+card: different wording means redrawing both.
+
+`assets/img/og-card.png` is the preview image shown when the link is shared on
+Discord and elsewhere: the coming-soon page's preview card, with the shop's
+name, «Master Artisan», the tagline and the web address.
 
 Once the hero has scrolled away, a **Back to top** button fades into the
 bottom-right corner. On wide windows (about 1376px and up) the margin beside the
@@ -312,15 +395,45 @@ cover the page as it scrolls past, so it waits until you reach the very bottom,
 where it sits in the empty space below the footer. It's always hidden while the
 hero is on screen and whenever the page is stacked (960px wide and under).
 
-The hero's lettering is drawn as shapes, so its words are fixed, as on the
-preview card. `name`, `title` and `tagline` in `shop.toml` are what screen
-readers hear, so keep them matching; different wording on screen means
-redrawing the hero.
+The letterforms in `hero.svg`, `og-card.png` and the intro are drawn from
+Cinzel and Cormorant Garamond (SIL Open Font License).
 
-The letterforms are drawn from Cinzel, Cinzel Decorative and Alegreya Sans (SIL
-Open Font License). The site also serves `logo.svg`, `hero.svg`,
-`favicon.svg`, `favicon.ico`, `og-card.png` (the preview image shown when the
-link is shared on Discord and elsewhere) and `apple-touch-icon.png`.
+### Where the files go
+
+Everything the page loads lives in `assets/`, sorted by type, and the built
+site keeps the same layout. Trunk does the copying, as listed in `index.html`:
+
+```
+assets/
+  css/    main.css, the stylesheet
+  fonts/  the fonts, with their licences
+  img/    favicon.svg, favicon.ico, apple-touch-icon.png, og-card.png,
+          logo.svg, hero.svg
+  js/     intro.js
+```
+
+The shop's own script and WebAssembly are built into `assets/js` as well, and
+the stylesheet into `assets/css`, with a fingerprint in their names so browsers
+can keep them for a year. Two files go at the top level of the built site
+instead: `favicon.ico` and `apple-touch-icon.png`, because browsers, Google and
+iPhones ask for `/favicon.ico` and `/apple-touch-icon.png` by name. So the site
+serves `index.html` and those two at the top, and everything else under
+`/assets/`, such as `/assets/img/og-card.png` and `/assets/img/hero.svg`.
+
+## Visitors' orders
+
+A visitor's order (the items, the note, the "I'll bring the materials" tick and
+their character name) is saved in their own browser, so it survives a reload.
+It's never sent to the server.
+
+It's kept for 12 hours after its last change, then cleared, unless they clear
+it first. A small cookie, `ffxiv-shop.order-expires`, keeps the time: each
+change sets it again for 12 hours (opening the page doesn't), and once the
+browser has deleted it, the page clears the whole order. That happens when the
+page is next opened, or within a minute if it's still open. The cookie holds
+only that time, and the server ignores it. **Clear order** empties the item
+list but keeps the note, tick and name; those go when the 12 hours run out.
+Where a browser has cookies turned off, the order is kept with no time limit.
 
 ## Item links, tooltips and icons
 
@@ -341,17 +454,18 @@ Dockerfile              the dev container and the server image (four stages)
 compose.yaml            runs the site on your server
 deploy/nginx.conf       the web server's settings, inside the container
 deploy/traefik/         the Traefik route for aetherandallure.com
-.env.example            template for .env (server settings and secrets)
+.env.example            template for .env (your Discord name and email, and any secrets)
 .devcontainer/          dev container settings and setup script
 .zed/                   Zed project settings and tasks
 rust-toolchain.toml     the Rust version and components
 index.html, Trunk.toml  page shell and build settings
-build.rs                checks shop.toml at build time
+build.rs                fills in and checks shop.toml at build time
 src/model.rs            reads and checks shop.toml
+src/vars.rs             fills in shop.toml's ${SHOP_…} values from .env
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
-style/main.css          the look
-assets/                 monogram, favicon, hero, preview images, fonts
+assets/css/main.css     the look
+assets/                 stylesheet, fonts, images and the intro, by type
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
 ```
@@ -361,7 +475,7 @@ LICENSE                 BSD 3-Clause License
 The code and site design are © 2026 Jason Telford, released under the
 [BSD 3-Clause License](LICENSE).
 
-Fonts: Cinzel, Cinzel Decorative and Alegreya Sans, under their own SIL Open
+Fonts: Cinzel, Cormorant Garamond and Alegreya Sans, under their own SIL Open
 Font License 1.1 (see `assets/fonts`).
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a

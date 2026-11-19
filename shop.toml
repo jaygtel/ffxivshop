@@ -7,6 +7,9 @@
 #  Adding items: write the in-game name, category, price and ready time,
 #  then run   cargo run -p shop-tools -- fill
 #  to look up the Eorzea Database link, icon, item level and jobs for you.
+#
+#  Your Discord name and email come from .env rather than this file: see
+#  [contact] below.
 # ─────────────────────────────────────────────────────────────────────────────
 
 [site]
@@ -16,10 +19,11 @@ since = 2026                             # the notice becomes "2026–2027" and 
 
 [shop]
 name = "Aether & Allure"
-# The hero at the top of the page (assets/hero.svg) shows the name, title and
-# tagline as part of its drawing. These lines are what screen readers hear, so
-# keep them matching; changing the words on screen means redrawing the hero.
-title = "Master Artisan"                 # shown as «Master Artisan» above the name
+# The hero at the top of the page shows the name, title, tagline, status and
+# status note as written here. Its opening animation is drawn for the name
+# "Aether & Allure" (with another name the hero shows without it), and the
+# link preview image, og-card.png, has the name, title and tagline drawn in.
+title = "Master Artisan"                 # shown above the name
 owner = "Sigrid Halvorsen"               # the character who owns the shop
 owner_role = "Owned and designed by"
 tagline = "Crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV."
@@ -34,6 +38,8 @@ icons = true                             # item icons, loaded from XIVAPI
 tooltips = true                          # Square Enix's Eorzea Database hover tooltips
 
 # Shows a "sample shop" notice. Set to false once your own details are in.
+# With false, the site is live: the build stops if SHOP_DISCORD or SHOP_EMAIL
+# isn't set in .env, so visitors never see the examples (see [contact]).
 demo = true
 
 how_to_order = [
@@ -67,9 +73,15 @@ tell = true                              # shows "/tell Sigrid Halvorsen@Sagitta
 friend_request = true
 message_book = true                      # visitors can leave a note in the estate's message book
 # linkshell = "Garden Crafters (CWLS)"
-discord = "your.discord.name"            # your Discord username
+# Your Discord username and email are set in .env, as SHOP_DISCORD and
+# SHOP_EMAIL, so they stay out of the code (the page still shows them).
+# Where they aren't set, the examples after :- are shown instead, and the
+# build warns you; with demo = false it stops instead. Any "double-quoted"
+# value in this file can do the same with a name of its own that starts with
+# SHOP_.
+discord = "${SHOP_DISCORD:-your.discord.name}"
 # discord_server = "https://discord.gg/your-invite"
-email = "commissions@example.com"        # e.g. an address on aetherandallure.com
+email = "${SHOP_EMAIL:-commissions@example.com}"
 
 # [[contact.links]]
 # label = "Bluesky"
