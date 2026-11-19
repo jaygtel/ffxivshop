@@ -7,11 +7,13 @@
 
 /* Fonts, served from fonts/ with their licences beside them:
    Cinzel, copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel);
-   Cormorant Garamond, copyright 2015 The Cormorant Project Authors (https://github.com/CatharsisFonts/Cormorant).
-   Both under the SIL Open Font License 1.1 (https://openfontlicense.org); subset to Latin.
+   Cormorant Garamond, copyright 2015 The Cormorant Project Authors (https://github.com/CatharsisFonts/Cormorant);
+   Alegreya Sans, copyright 2013 The Alegreya Sans Project Authors (https://github.com/huertatipografica/Alegreya-Sans).
+   All under the SIL Open Font License 1.1 (https://openfontlicense.org); subset to Latin.
    cinzel.woff2 and cormorant-garamond-italic.woff2 are the coming-soon page's
-   own files; cormorant-garamond.woff2 is the upright from the same release,
-   keeping the lining and tabular figures the prices use. */
+   own files. Cinzel sets the headings and labels, Cormorant Garamond italic
+   the hero's lines, and Alegreya Sans everything else, as it reads easily at
+   small sizes. */
 @font-face {
   font-family: "Cinzel";
   src: url("fonts/cinzel.woff2") format("woff2");
@@ -21,16 +23,37 @@
 }
 @font-face {
   font-family: "Cormorant Garamond";
-  src: url("fonts/cormorant-garamond.woff2") format("woff2");
-  font-weight: 300 700;
+  src: url("fonts/cormorant-garamond-italic.woff2") format("woff2");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: "Cormorant Garamond";
-  src: url("fonts/cormorant-garamond-italic.woff2") format("woff2");
-  font-weight: 500;
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-latin-400-italic.woff2") format("woff2");
+  font-weight: 400;
   font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  src: url("fonts/alegreya-sans-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -72,15 +95,14 @@
 
   /* Type */
   --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
-  --font-body: "Cormorant Garamond", "Cormorant", Garamond, Georgia, "Times New Roman", serif;
-  /* Cormorant Garamond's lower-case letters are small for its size, so these
-     steps are a size up on a sans-serif's to read at the same size. */
-  --step--2: 0.9375rem;
-  --step--1: 1rem;
-  --step-0: 1.1875rem;
-  --step-1: 1.375rem;
-  --step-2: 1.75rem;
-  --step-3: 2.25rem;
+  --font-body: "Alegreya Sans", "Gill Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-lore: "Cormorant Garamond", "Cormorant", Garamond, Georgia, "Times New Roman", serif;
+  --step--2: 0.8125rem;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5625rem;
+  --step-3: 2rem;
   --step-4: clamp(2.6rem, 5.5vw + 0.5rem, 4.4rem);
 
   --radius: 4px;
@@ -111,10 +133,9 @@ body {
   min-height: 100vh;
   font-family: var(--font-body);
   font-size: var(--step-0);
-  font-weight: 500;
-  line-height: 1.45;
-  /* Cormorant's everyday figures dip below the line; prices and levels read
-     better with the even, upright ones. */
+  line-height: 1.5;
+  /* Alegreya Sans's everyday figures dip below the line; prices and levels
+     read better with the even, upright ones. */
   font-variant-numeric: lining-nums;
   color: var(--ink);
   background-color: var(--night-0);
@@ -247,6 +268,11 @@ h3 {
   min-height: 100vh;
   min-height: 100svh;
   padding: clamp(28px, 6vh, 72px) 18px 24px;
+  /* The hero's lines keep the coming-soon page's Cormorant Garamond. */
+  font-family: var(--font-lore);
+  font-size: 1.1875rem;
+  font-weight: 500;
+  line-height: 1.45;
   text-align: center;
 }
 
@@ -974,7 +1000,7 @@ h3 {
   color: var(--gold-1);
   font: inherit;
   font-size: var(--step--1);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.3;
   white-space: nowrap;
   cursor: pointer;
@@ -1125,16 +1151,14 @@ select option {
   flex: none;
   display: inline-flex;
   align-items: baseline;
-  /* Snug, so the tabs wrap where they did before the change of font. */
-  gap: 5px;
-  padding: 6px 9px;
+  gap: 7px;
+  padding: 6px 13px;
   border: 1px solid var(--edge);
   border-radius: 3px;
   background: linear-gradient(180deg, rgba(163, 179, 214, 0.08), rgba(163, 179, 214, 0.02));
   color: var(--muted);
   font: inherit;
   font-size: var(--step--1);
-  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1190,14 +1214,9 @@ select option {
 .sort {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--muted);
-  font-size: var(--step--2);
-}
-
-.sort select {
-  padding-inline: 8px;
-  font-size: inherit;
+  font-size: var(--step--1);
 }
 
 /* The list */
@@ -1304,7 +1323,7 @@ select option {
   align-items: baseline;
   gap: 2px 8px;
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.3;
 }
 
@@ -1393,7 +1412,7 @@ select option {
   margin: 0;
   color: var(--bright);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.25;
 }
@@ -1402,7 +1421,6 @@ select option {
   color: var(--muted);
   font-size: var(--step-0);
   font-style: italic;
-  font-weight: 500;
 }
 
 .per,
@@ -1513,14 +1531,11 @@ select option {
 .stepper button {
   width: 30px;
   height: 28px;
-  /* Cormorant's − and + sit low in the line; this centres them. */
-  padding: 0 0 4px;
   border: 0;
   background: none;
   color: var(--ink);
   font: inherit;
-  font-size: var(--step-1);
-  line-height: 1;
+  font-size: var(--step-0);
   cursor: pointer;
 }
 
@@ -1565,7 +1580,7 @@ select option {
   gap: 8px;
   color: var(--bright);
   font-size: var(--step-2);
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
@@ -1579,7 +1594,6 @@ select option {
 .order-total .ask,
 .order-peek .ask {
   color: var(--muted);
-  font-weight: 500;
 }
 
 .order-total .ask {
@@ -1620,12 +1634,6 @@ select option {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-@media (max-width: 359.98px) {
-  .order-actions .btn {
-    padding-inline: 9px;
-  }
 }
 
 .by-hand {
@@ -1693,7 +1701,7 @@ select option {
 .plaque-plot b {
   color: var(--gold-1);
   font-family: var(--font-display);
-  font-size: 1.05em;
+  font-size: 1.15em;
   font-weight: 700;
 }
 
@@ -1754,7 +1762,7 @@ select option {
   border-radius: 50%;
   background: radial-gradient(circle at 50% 40%, #13265a, #070e26);
   color: var(--gold-1);
-  /* Cormorant's figures here: Cinzel's 1 reads like a capital I. */
+  /* Alegreya Sans figures here: Cinzel's 1 reads like a capital I. */
   font-size: var(--step--2);
   font-weight: 700;
   line-height: 1;
@@ -1797,7 +1805,7 @@ select option {
 code.ch-value {
   color: var(--bright);
   font-family: inherit;
-  font-weight: 600;
+  font-weight: 500;
   user-select: all;
 }
 
@@ -1822,6 +1830,7 @@ code.ch-value {
   color: rgba(163, 179, 214, 0.82);
   font-family: var(--font-display);
   font-size: 0.75rem;
+  font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
@@ -1970,9 +1979,6 @@ code.ch-value {
       0 12px 30px rgba(0, 0, 0, 0.6);
     -webkit-backdrop-filter: blur(12px) saturate(125%);
     backdrop-filter: blur(12px) saturate(125%);
-    /* Sized so the bar's parts take the room they did before the change of
-       font, and a large total wraps no sooner. */
-    font-size: var(--step--1);
     font-variant-numeric: tabular-nums lining-nums;
   }
 
@@ -1983,11 +1989,6 @@ code.ch-value {
     gap: 0 6px;
     margin-right: auto;
     color: var(--bright);
-    font-size: 1.0625rem;
-  }
-
-  .order-peek .btn {
-    padding-inline: 10px;
   }
 
   /* On the narrowest phones the total can't always fit with "+ Ask" beside

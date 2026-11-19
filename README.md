@@ -277,9 +277,11 @@ own config. Never copy them into this repository.
 The site is styled like the Aether & Allure coming-soon page: a night sky of
 deep indigo glows with a slow aurora, twinkling stars and motes of aether
 (drawn by `src/components/sky.rs`), and dark glass windows framed in gold with
-gold corner pieces. Headings and labels are set in **Cinzel**, everything else
-in **Cormorant Garamond**, the same fonts as the coming-soon page. The colours
-are listed at the top of `style/main.css`.
+gold corner pieces. Headings and labels are set in **Cinzel** and the hero's
+lines in **Cormorant Garamond** italic, the same fonts as the coming-soon page.
+Everything else, the text in the windows included, is set in **Alegreya Sans**,
+which reads easily at small sizes. The colours are listed at the top of
+`style/main.css`.
 
 `assets/logo.svg` is the emblem: an aether crystal on a night-blue disc in gold
 rings, on a transparent background. The disc carries its own contrast, so it
@@ -384,8 +386,8 @@ LICENSE                 BSD 3-Clause License
 The code and site design are © 2026 Jason Telford, released under the
 [BSD 3-Clause License](LICENSE).
 
-Fonts: Cinzel and Cormorant Garamond, under their own SIL Open Font License 1.1
-(see `assets/fonts`).
+Fonts: Cinzel, Cormorant Garamond and Alegreya Sans, under their own SIL Open
+Font License 1.1 (see `assets/fonts`).
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a
 registered trademark of Square Enix Holdings Co., Ltd. This is an unofficial fan
