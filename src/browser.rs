@@ -12,9 +12,30 @@ pub fn hash() -> String {
         .to_string()
 }
 
+/// Sets the part of the address after `#`, as a new history entry, so Back
+/// returns to the one before. An empty value takes the `#` off altogether,
+/// without moving the page: a bare `#` would send the browser to the top.
 pub fn set_hash(value: &str) {
-    if let Some(window) = web_sys::window() {
-        let _ = window.location().set_hash(value);
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let location = window.location();
+    if !value.is_empty() {
+        let _ = location.set_hash(value);
+        return;
+    }
+    // Nothing to take off. (The hash of "page/#" reads as "", so this looks
+    // at the whole address.)
+    if !location.href().unwrap_or_default().contains('#') {
+        return;
+    }
+    let address = format!(
+        "{}{}",
+        location.pathname().unwrap_or_default(),
+        location.search().unwrap_or_default()
+    );
+    if let Ok(history) = window.history() {
+        let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&address));
     }
 }
 
