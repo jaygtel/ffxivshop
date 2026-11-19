@@ -27,11 +27,15 @@
     <link rel="preload" href="fonts/cormorant-garamond-italic.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
 
+    <!-- The hero's opening animation, as on the coming-soon page. It runs
+         before the shop's own script, so it's ready when the hero appears. -->
+    <script src="intro.js" defer></script>
     <link data-trunk rel="rust" data-bin="ffxiv-shop" data-wasm-opt="z">
     <link data-trunk rel="css" href="style/main.css">
     <link data-trunk rel="copy-dir" href="assets/fonts">
     <link data-trunk rel="copy-file" href="assets/logo.svg">
     <link data-trunk rel="copy-file" href="assets/hero.svg">
+    <link data-trunk rel="copy-file" href="assets/intro.js">
     <link data-trunk rel="copy-file" href="assets/favicon.svg">
     <link data-trunk rel="copy-file" href="assets/favicon.ico">
     <link data-trunk rel="copy-file" href="assets/og-card.png">

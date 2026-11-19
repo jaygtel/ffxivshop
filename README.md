@@ -298,26 +298,36 @@ Browsers that can show the SVG (Chrome, Edge, Firefox) still use it: the
 `sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome from
 choosing the ICO instead. If the favicon's design changes, remake the ICO too.
 
-`assets/hero.svg` is the opening lockup: the emblem, «Master Artisan», the
-shop's name in the coming-soon page's shimmering gold, its divider and the
-tagline, on a transparent background. It arranges itself for the space it has:
+The site opens with a full-screen hero built like the coming-soon page: the
+emblem floating over a panel of dark glass framed in gold, holding «Master
+Artisan», the shop's name in shimmering gold, the divider, whether orders are
+open (where the coming-soon page says "Coming soon"), the tagline and status
+note, and an **Order Now** button that scrolls down to the shop. Its words
+come from `shop.toml` (`title`, `name`, `status`, `tagline`, `status_note`).
+On shorter screens (most laptops, small phones, phones on their side) it gets
+more compact, so it always fits on one screen. The crafting jobs and their
+levels (`[shop.crafters]`) sit just above the wares window.
 
-- landscape, 900px and wider: emblem on the left, text on the right
-- landscape, under 900px: the same arrangement, with larger small print for the width
-- narrower than 5:4 (phones, tablets held upright): stacked, with the name on
-  three lines as on the coming-soon page's phone layout
+When the page opens, `assets/intro.js` plays the coming-soon page's intro,
+about six seconds: the name is written in aether fire, glides up into its
+place while the words around it fade in, then the crystal appears and the gold
+border draws itself. Any click, tap, key or scroll skips straight to the
+finished hero. It doesn't play for visitors who prefer reduced motion, or when
+the page opens at a link such as `#housing`, and if the script can't load the
+hero simply shows finished. Its letter outlines are drawn for the name
+"Aether & Allure"; with another name the hero shows without the intro. The
+emblem's rings turn, its crystal floats and the name shimmers, as on the
+coming-soon page (none of it moves with reduced motion).
 
-It always sits centred in its space. The site opens with it: a full-screen,
-centred hero with an **Order Now** button that scrolls down to the shop, and
-the shop's status. The crafting jobs and their levels (`[shop.crafters]`) sit
-just above the wares window. The site inlines the file, so it follows
-the browser window, and it takes its night-sky colours from the page's dark
-colour scheme. Opened on its own or used as an image, it follows its own box,
-in gold and night blue on dark backgrounds or deeper golds and slate on light
-ones. As an image it has no fixed size: give it a width and the aspect ratio
-listed at the top of the file. Its rings turn, its crystal floats and its name
-shimmers, as on the coming-soon page; none of it moves for visitors who prefer
-reduced motion.
+`assets/hero.svg` is the same lockup as a standalone picture (the emblem,
+«Master Artisan», the name and the tagline, on a transparent background),
+published as `/hero.svg` for use elsewhere; the page itself doesn't use it. It
+arranges itself for the space it has (emblem beside the text in landscape,
+stacked when narrower than 5:4), and draws in gold and night blue on dark
+backgrounds or deeper golds and slate on light ones. As an image it has no
+fixed size: give it a width and the aspect ratio listed at the top of the file.
+Its lettering is drawn as shapes, so its words are fixed, as on the preview
+card: different wording means redrawing both.
 
 `assets/og-card.png` is the preview image shown when the link is shared on
 Discord and elsewhere: the coming-soon page's preview card, with the shop's
@@ -330,14 +340,10 @@ cover the page as it scrolls past, so it waits until you reach the very bottom,
 where it sits in the empty space below the footer. It's always hidden while the
 hero is on screen and whenever the page is stacked (960px wide and under).
 
-The hero's lettering is drawn as shapes, so its words are fixed, as on the
-preview card. `name`, `title` and `tagline` in `shop.toml` are what screen
-readers hear, so keep them matching; different wording on screen means
-redrawing the hero.
-
-The letterforms are drawn from Cinzel and Cormorant Garamond (SIL Open Font
-License). The site also serves `logo.svg`, `hero.svg`, `favicon.svg`,
-`favicon.ico`, `og-card.png` and `apple-touch-icon.png`.
+The letterforms in `hero.svg`, `og-card.png` and the intro are drawn from
+Cinzel and Cormorant Garamond (SIL Open Font License). The site also serves
+`logo.svg`, `hero.svg`, `favicon.svg`, `favicon.ico`, `og-card.png`,
+`apple-touch-icon.png` and `intro.js`.
 
 ## Item links, tooltips and icons
 
@@ -368,7 +374,7 @@ src/model.rs            reads and checks shop.toml
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
 style/main.css          the look
-assets/                 emblem, favicon, hero, preview images, fonts
+assets/                 emblem, favicon, hero, preview images, intro, fonts
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
 ```
