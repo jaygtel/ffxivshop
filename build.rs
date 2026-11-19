@@ -5,6 +5,10 @@
 //! looking each name up in the environment, then in `.env`. The site is built
 //! from that filled-in copy, written to OUT_DIR, so details such as the
 //! Discord name and email can stay out of the code.
+//!
+//! A value that isn't set falls back to its example, with a warning. On the
+//! live site (demo = false) visitors would see the example, so there it stops
+//! the build instead.
 
 #[allow(dead_code)]
 #[path = "src/model.rs"]
@@ -54,24 +58,39 @@ fn main() {
         std::process::exit(1);
     }
 
-    match model::Shop::from_toml(&filled.text) {
-        Ok(shop) => {
-            for (name, example) in &filled.examples {
-                let live = if shop.shop.demo {
-                    ""
-                } else {
-                    " (demo = false, so visitors would see it)"
-                };
-                println!(
-                    "cargo:warning=shop.toml: {name} isn't set in .env, so the page shows the example \"{example}\"{live}"
-                );
-            }
-            for warning in shop.warnings() {
-                println!("cargo:warning=shop.toml: {warning}");
-            }
-        }
+    let shop = match model::Shop::from_toml(&filled.text) {
+        Ok(shop) => shop,
         Err(problems) => fail(&problems),
+    };
+    if !shop.shop.demo && !filled.examples.is_empty() {
+        fail_live(&filled.examples);
     }
+    for (name, example) in &filled.examples {
+        println!(
+            "cargo:warning=shop.toml: {name} isn't set in .env, so the page shows the example \"{example}\""
+        );
+    }
+    for warning in shop.warnings() {
+        println!("cargo:warning=shop.toml: {warning}");
+    }
+}
+
+/// Stops a live build (demo = false) that would show visitors an example in
+/// place of a value that isn't set.
+fn fail_live(examples: &[(String, String)]) -> ! {
+    let (these, them) = if examples.len() == 1 {
+        ("this", "it")
+    } else {
+        ("these", "them")
+    };
+    eprintln!("\nThe live site (demo = false) needs {these} set in .env:\n");
+    for (name, example) in examples {
+        eprintln!("  {name}  (or visitors would see the example \"{example}\")");
+    }
+    eprintln!(
+        "\nSet {them} in .env and build again, or set demo = true while the shop is still a sample.\n"
+    );
+    std::process::exit(1);
 }
 
 fn fail(problems: &str) -> ! {

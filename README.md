@@ -32,7 +32,9 @@ When your own details are in, set `demo = false` to remove the "sample shop" not
 Your Discord name and email aren't written in `shop.toml`. They come from
 `.env` (`SHOP_DISCORD` and `SHOP_EMAIL`), so they stay out of the code and
 GitHub; see [Settings and secrets](#settings-and-secrets-env). The page still
-shows them on its contact card, as it has to.
+shows them on its contact card, as it has to. If one isn't set, the page shows
+an example in its place. Once you set `demo = false`, the build stops rather
+than do that, so the live site never shows the examples.
 
 ### Adding items
 
@@ -199,10 +201,11 @@ cp .env.example .env               # then fill in SHOP_DISCORD and SHOP_EMAIL
 docker compose up -d --build
 ```
 
-The first build compiles the site and takes several minutes. If the build
-warns that SHOP_DISCORD or SHOP_EMAIL isn't set, the site shows the examples
-from `shop.toml` instead: fill them in in `.env` and run the `up` command
-again.
+The first build compiles the site and takes several minutes. If SHOP_DISCORD
+or SHOP_EMAIL isn't set in `.env`, a live shop (`demo = false`) stops the build
+and says which, while a sample shop (`demo = true`) builds with the examples
+from `shop.toml` and a warning. Either way, fill them in in `.env` and run the
+`up` command again.
 
 The container joins your existing `traefik_proxy` network and publishes no
 ports on the server; Traefik reaches it by name through Docker's DNS. Then give
@@ -292,8 +295,10 @@ It is:
 email. `shop.toml` reads them as `${SHOP_DISCORD:-your.discord.name}` and
 `${SHOP_EMAIL:-commissions@example.com}`: the value from `.env`, or the example
 after `:-` when it isn't set. When an example is used, the build says so with a
-warning. Any double-quoted value in `shop.toml` can work the same way, with a
-name of its own that starts with `SHOP_`.
+warning. Once the site is live (`demo = false`), it stops instead and lists
+what to set, so visitors never see the examples. Any double-quoted value in
+`shop.toml` can work the same way, with a name of its own that starts with
+`SHOP_`.
 
 - These aren't secrets: every visitor sees them on the contact card. Keeping
   them in `.env` keeps them out of the code and GitHub.
@@ -304,7 +309,8 @@ name of its own that starts with `SHOP_`.
     rebuilds by itself when you save it;
   - on the server, Docker Compose reads `.env` and passes the values to the
     build (`args:` in `compose.yaml`), so run `docker compose up -d --build`
-    after changing it.
+    after changing it. If that build stops, the site that's already running
+    carries on as it was.
 - Keep a `.env` on your computer even if you leave the values empty. Without
   one, every build has to recompile the shop.
 
