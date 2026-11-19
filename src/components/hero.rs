@@ -1,8 +1,9 @@
 //! The opening screen: the hero drawing (assets/hero.svg: the crystal emblem,
-//! «title», name and tagline), an Order Now link down to the shop, whether
-//! orders are open, and the crafting jobs. Centred and a full screen tall.
+//! «title», name and tagline), an Order Now link down to the shop and whether
+//! orders are open. Centred and a full screen tall. (The crafting jobs sit
+//! just above the wares: see crafters.rs.)
 
-use crate::model::{CRAFTERS, Shop};
+use crate::model::Shop;
 use leptos::prelude::*;
 
 /// The same file that's published as /hero.svg, so the two never drift apart.
@@ -14,10 +15,6 @@ const HERO: &str = include_str!("../../assets/hero.svg");
 #[component]
 pub fn Hero(shop: &'static Shop) -> impl IntoView {
     let info = &shop.shop;
-    let crafters: Vec<(&str, &str, u16)> = CRAFTERS
-        .iter()
-        .filter_map(|(abbr, job)| info.crafters.get(*abbr).map(|level| (*abbr, *job, *level)))
-        .collect();
 
     view! {
         // Back to top scrolls here and moves keyboard focus here.
@@ -47,24 +44,6 @@ pub fn Hero(shop: &'static Shop) -> impl IntoView {
                 </p>
             </div>
             {info.status_note.clone().map(|note| view! { <p class="hero-note">{note}</p> })}
-            {(!crafters.is_empty())
-                .then(|| {
-                    view! {
-                        <ul class="crafters" aria-label="Crafting and gathering jobs">
-                            {crafters
-                                .into_iter()
-                                .map(|(abbr, job, level)| {
-                                    view! {
-                                        <li title=format!("{job}, level {level}")>
-                                            <abbr title=job>{abbr}</abbr>
-                                            <span class="lvl">{level}</span>
-                                        </li>
-                                    }
-                                })
-                                .collect_view()}
-                        </ul>
-                    }
-                })}
         </header>
     }
 }

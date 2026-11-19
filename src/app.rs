@@ -1,6 +1,6 @@
 use crate::browser;
 use crate::components::{
-    AetherSky, BackToTop, ContactCard, FindMe, Footer, Hero, OrderSlip, Wares,
+    AetherSky, BackToTop, ContactCard, Crafters, FindMe, Footer, Hero, OrderSlip, Wares,
 };
 use crate::model::{EDB_TOOLTIP_SCRIPT, Shop};
 use crate::order::Order;
@@ -50,6 +50,8 @@ fn Storefront(shop: &'static Shop) -> impl IntoView {
                     }
                 })}
             <main class="market">
+                // The crafting jobs sit just above the wares window.
+                <Crafters shop />
                 <Wares shop order />
                 <OrderSlip shop order />
             </main>

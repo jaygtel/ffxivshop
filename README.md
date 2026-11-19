@@ -308,8 +308,9 @@ tagline, on a transparent background. It arranges itself for the space it has:
   three lines as on the coming-soon page's phone layout
 
 It always sits centred in its space. The site opens with it: a full-screen,
-centred hero with an **Order Now** button that scrolls down to the shop, the
-shop's status and the crafting jobs. The site inlines the file, so it follows
+centred hero with an **Order Now** button that scrolls down to the shop, and
+the shop's status. The crafting jobs and their levels (`[shop.crafters]`) sit
+just above the wares window. The site inlines the file, so it follows
 the browser window, and it takes its night-sky colours from the page's dark
 colour scheme. Opened on its own or used as an image, it follows its own box,
 in gold and night blue on dark backgrounds or deeper golds and slate on light

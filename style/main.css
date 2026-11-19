@@ -330,11 +330,6 @@ h3 {
   font-style: italic;
 }
 
-.hero .crafters {
-  justify-content: center;
-  max-width: 760px;
-}
-
 .status {
   display: inline-flex;
   align-items: center;
@@ -368,53 +363,11 @@ h3 {
   box-shadow: 0 0 10px var(--stop);
 }
 
-.crafters {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.crafters li {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 3px 8px;
-  border: 1px solid var(--gold-faint);
-  border-radius: 3px;
-  background: rgba(8, 14, 34, 0.55);
-  font-size: var(--step--1);
-  line-height: 1.35;
-}
-
-.crafters abbr {
-  text-decoration: none;
-  color: var(--gold-2);
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.crafters .lvl {
-  font-size: var(--step--2);
-  font-variant-numeric: tabular-nums lining-nums;
-  color: var(--muted);
-}
-
-/* The narrowest phones, continued: a slimmer status beside the button, and a
-   smaller note, so a short one stays on one line and the hero still fits the
-   screen. */
+/* The narrowest phones, continued: a slimmer status, so it still fits beside
+   the button. */
 @media (max-width: 359.98px) {
   .status {
     padding-inline: 10px 12px;
-  }
-
-  .hero-note {
-    font-size: 0.875rem;
   }
 }
 
@@ -642,8 +595,57 @@ select option {
 .market {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+  /* The crafting jobs sit just above the wares window, in its column, so the
+     order slip still lines up with the top of the wares. */
+  grid-template-areas:
+    "jobs ."
+    "wares order";
   align-items: start;
   gap: clamp(18px, 2.4vw, 28px);
+}
+
+/* No jobs listed in shop.toml: no empty row above the wares. */
+.market:not(:has(> .crafters)) {
+  grid-template-areas: "wares order";
+}
+
+/* Crafting jobs */
+
+.crafters {
+  grid-area: jobs;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crafters li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 8px;
+  border: 1px solid var(--gold-faint);
+  border-radius: 3px;
+  background: rgba(8, 14, 34, 0.55);
+  font-size: var(--step--1);
+  line-height: 1.35;
+}
+
+.crafters abbr {
+  text-decoration: none;
+  color: var(--gold-2);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.crafters .lvl {
+  font-size: var(--step--2);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--muted);
 }
 
 /* Tabs */
@@ -742,6 +744,7 @@ select option {
    width, or on a phone. The table's fixed columns take about 490px, so under
    720px the item names would get squeezed. */
 .wares {
+  grid-area: wares;
   container: wares / inline-size;
 }
 
@@ -998,6 +1001,7 @@ select option {
 /* ------------------------------------------------------------- order slip */
 
 .order {
+  grid-area: order;
   position: sticky;
   top: 16px;
 }
@@ -1458,6 +1462,19 @@ code.ch-value {
   .market,
   .visit {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market {
+    grid-template-areas:
+      "jobs"
+      "wares"
+      "order";
+  }
+
+  .market:not(:has(> .crafters)) {
+    grid-template-areas:
+      "wares"
+      "order";
   }
 
   /* No Back to top button while the page is stacked. */
