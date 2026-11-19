@@ -2,10 +2,10 @@
 //! crystal emblem floating over a panel of dark glass framed in gold, holding
 //! «title», the shop's name, the divider, whether orders are open, the
 //! tagline and status note, and an Order Now link down to the shop. Centred
-//! and a full screen tall. When the page opens, assets/intro.js writes the
-//! name in aether fire and the rest gathers around it, as on the coming-soon
-//! page (not with reduced motion). The crafting jobs sit just above the
-//! wares: see crafters.rs.
+//! and a full screen tall. When the page opens, assets/js/intro.js writes
+//! the name in aether fire and the rest gathers around it, as on the
+//! coming-soon page (not with reduced motion). The crafting jobs sit just
+//! above the wares: see crafters.rs.
 
 use crate::model::Shop;
 use leptos::prelude::*;

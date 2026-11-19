@@ -281,24 +281,25 @@ gold corner pieces. Headings and labels are set in **Cinzel** and the hero's
 lines in **Cormorant Garamond** italic, the same fonts as the coming-soon page.
 Everything else, the text in the windows included, is set in **Alegreya Sans**,
 which reads easily at small sizes. The colours are listed at the top of
-`style/main.css`.
+`assets/css/main.css`.
 
-`assets/logo.svg` is the emblem: an aether crystal on a night-blue disc in gold
-rings, on a transparent background. The disc carries its own contrast, so it
-works on any background; its outer ring turns a deeper gold on light
+`assets/img/logo.svg` is the emblem: an aether crystal on a night-blue disc in
+gold rings, on a transparent background. The disc carries its own contrast, so
+it works on any background; its outer ring turns a deeper gold on light
 backgrounds (following the viewer's light or dark mode). A page that inlines it
 can choose that gold with the `--aa-accent` CSS custom property.
 
-`assets/favicon.svg` and `assets/apple-touch-icon.png` are the coming-soon
-page's own: the crystal, outlined in gold, with light and dark versions in the
-SVG.
+`assets/img/favicon.svg` and `assets/img/apple-touch-icon.png` are the
+coming-soon page's own: the crystal, outlined in gold, with light and dark
+versions in the SVG.
 
-`assets/favicon.ico` is a fallback copy of the favicon (16, 32 and 48 pixels, in
-its light-background colours) for places that can't show SVG, such as Google
-Search results, older Safari and tools that only ever ask for `/favicon.ico`.
-Browsers that can show the SVG (Chrome, Edge, Firefox) still use it: the
-`sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome from
-choosing the ICO instead. If the favicon's design changes, remake the ICO too.
+`assets/img/favicon.ico` is a fallback copy of the favicon (16, 32 and 48
+pixels, in its light-background colours) for places that can't show SVG, such
+as Google Search results, older Safari and tools that only ever ask for
+`/favicon.ico`. Browsers that can show the SVG (Chrome, Edge, Firefox) still use
+it: the `sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome
+from choosing the ICO instead. If the favicon's design changes, remake the ICO
+too.
 
 The site opens with a full-screen hero built like the coming-soon page: the
 emblem floating over a panel of dark glass framed in gold, holding «Master
@@ -310,7 +311,7 @@ On shorter screens (most laptops, small phones, phones on their side) it gets
 more compact, so it always fits on one screen. The crafting jobs and their
 levels (`[shop.crafters]`) sit just above the wares window.
 
-When the page opens, `assets/intro.js` plays the coming-soon page's intro,
+When the page opens, `assets/js/intro.js` plays the coming-soon page's intro,
 about six seconds: the name is written in aether fire, glides up into its
 place while the words around it fade in, then the crystal appears and the gold
 border draws itself. Any click, tap, key or scroll skips straight to the
@@ -321,9 +322,10 @@ hero simply shows finished. Its letter outlines are drawn for the name
 emblem's rings turn, its crystal floats and the name shimmers, as on the
 coming-soon page (none of it moves with reduced motion).
 
-`assets/hero.svg` is the same lockup as a standalone picture (the emblem,
+`assets/img/hero.svg` is the same lockup as a standalone picture (the emblem,
 «Master Artisan», the name and the tagline, on a transparent background),
-published as `/hero.svg` for use elsewhere; the page itself doesn't use it. It
+published as `/assets/img/hero.svg` for use elsewhere; the page itself doesn't
+use it. It
 arranges itself for the space it has (emblem beside the text in landscape,
 stacked when narrower than 5:4), and draws in gold and night blue on dark
 backgrounds or deeper golds and slate on light ones. As an image it has no
@@ -331,7 +333,7 @@ fixed size: give it a width and the aspect ratio listed at the top of the file.
 Its lettering is drawn as shapes, so its words are fixed, as on the preview
 card: different wording means redrawing both.
 
-`assets/og-card.png` is the preview image shown when the link is shared on
+`assets/img/og-card.png` is the preview image shown when the link is shared on
 Discord and elsewhere: the coming-soon page's preview card, with the shop's
 name, «Master Artisan», the tagline and the web address.
 
@@ -343,9 +345,29 @@ where it sits in the empty space below the footer. It's always hidden while the
 hero is on screen and whenever the page is stacked (960px wide and under).
 
 The letterforms in `hero.svg`, `og-card.png` and the intro are drawn from
-Cinzel and Cormorant Garamond (SIL Open Font License). The site also serves
-`logo.svg`, `hero.svg`, `favicon.svg`, `favicon.ico`, `og-card.png`,
-`apple-touch-icon.png` and `intro.js`.
+Cinzel and Cormorant Garamond (SIL Open Font License).
+
+### Where the files go
+
+Everything the page loads lives in `assets/`, sorted by type, and the built
+site keeps the same layout. Trunk does the copying, as listed in `index.html`:
+
+```
+assets/
+  css/    main.css, the stylesheet
+  fonts/  the fonts, with their licences
+  img/    favicon.svg, favicon.ico, apple-touch-icon.png, og-card.png,
+          logo.svg, hero.svg
+  js/     intro.js
+```
+
+The shop's own script and WebAssembly are built into `assets/js` as well, and
+the stylesheet into `assets/css`, with a fingerprint in their names so browsers
+can keep them for a year. Two files go at the top level of the built site
+instead: `favicon.ico` and `apple-touch-icon.png`, because browsers, Google and
+iPhones ask for `/favicon.ico` and `/apple-touch-icon.png` by name. So the site
+serves `index.html` and those two at the top, and everything else under
+`/assets/`, such as `/assets/img/og-card.png` and `/assets/img/hero.svg`.
 
 ## Visitors' orders
 
@@ -390,8 +412,8 @@ build.rs                checks shop.toml at build time
 src/model.rs            reads and checks shop.toml
 src/order.rs            the visitor's order and the messages they copy
 src/components/         the parts of the page
-style/main.css          the look
-assets/                 emblem, favicon, hero, preview images, intro, fonts
+assets/css/main.css     the look
+assets/                 stylesheet, fonts, images and the intro, by type
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
 ```
