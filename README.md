@@ -160,6 +160,122 @@ containers.
 
 `cargo test --workspace` runs the checks.
 
+## Making changes
+
+`main` is the only long-lived branch. It only changes through pull requests on
+GitHub, and a pull request can only be merged once GitHub has checked that the
+site builds.
+
+### Each change
+
+1. Make a branch for the feature or fix from an up-to-date `main`. Name it
+   `feature/…` or `fix/…`:
+
+   ```sh
+   git switch main
+   git pull --ff-only origin main
+   git switch -c feature/real-listings
+   ```
+
+2. Make the change and commit it on that branch. Before you open a pull
+   request, check it yourself: try it with `trunk serve`, run `cargo test`, and
+   make sure `trunk build --release` works.
+
+3. Push the branch and open a pull request into `main`:
+
+   ```sh
+   git push -u origin feature/real-listings
+   gh pr create --base main --head feature/real-listings
+   ```
+
+   If it finishes an issue, put `Closes #3` (with the issue's number) in the
+   description. When the pull request is merged, the issue closes and its card
+   moves to Done.
+
+4. GitHub builds the site for the pull request: this is the **Build** check.
+   Once it has passed, merge:
+
+   ```sh
+   gh pr checks --watch
+   gh pr merge --merge
+   ```
+
+   GitHub then deletes the branch.
+
+5. Bring your `main` up to date and delete your copy of the branch:
+
+   ```sh
+   git switch main
+   git pull --ff-only origin main
+   git branch -d feature/real-listings
+   git fetch --prune origin
+   ```
+
+**A branch inside a branch.** If a branch that's still open needs another fix
+or feature as part of its work, make that one from the open branch, and open
+its pull request back into it:
+
+```sh
+git switch -c fix/price-format feature/real-listings
+gh pr create --base feature/real-listings --head fix/price-format
+```
+
+Every branch merges back into the branch it was made from, so only finished
+work reaches `main`. GitHub only acts on `Closes #…` in pull requests into
+`main`, so put those lines in the pull request that goes into `main`.
+
+### The build check
+
+`.github/workflows/build.yml` runs on GitHub for every pull request into
+`main`. It builds the site the same way the server does, from the `site` stage
+of the `Dockerfile`, and keeps nothing. It never deploys: the server only
+updates when you run `docker compose up -d --build` there. It doesn't run the
+tests either; those are yours to run before you open a pull request.
+
+Your real Discord name and email stay in the server's `.env` and never go to
+GitHub, so the check builds with stand-ins. That way it still passes once you
+set `demo = false`.
+
+On GitHub, the **Protect main** ruleset only lets a pull request be merged when:
+
+- the **Build** check has passed, and
+- the branch is up to date with `main`, so the check has built exactly what
+  `main` will become.
+
+If GitHub says the branch is out of date (for example because another pull
+request was merged first), bring it up to date and the check runs again:
+
+```sh
+gh pr update-branch
+```
+
+That adds a commit to the branch on GitHub, so run `git pull` on the branch
+before you carry on with it. If the check fails, the pull request's **Details**
+link shows where. Fix it on the branch and push, and the check runs again.
+
+### Your own main branch
+
+The ruleset protects `main` on GitHub. Your own copy of `main` is protected by
+`.githooks/reference-transaction`, a git hook that only lets it move to match
+GitHub's `main`. Turn it on once, in this folder on your computer (the dev
+container uses the same folder, so it's on there too):
+
+```sh
+git config core.hooksPath .githooks
+```
+
+From then on, `git pull --ff-only origin main` works as usual, but a commit or
+merge on `main` is stopped before `main` changes, with a message saying what
+to do next:
+
+- After a stopped commit, your changes are still there, not committed yet.
+  Make a branch with `git switch -c feature/<name>` and commit again there.
+- After a stopped merge, git may already have changed your files.
+  `git reset --merge` puts them back.
+
+It only guards `main`. Other branches work as normal, and it doesn't build or
+check anything.
+
 ## Hosting on your server
 
 The site runs on your server in a Docker container, behind your Traefik:
@@ -246,8 +362,8 @@ point has a different name, change `websecure` in the file.
 
 ### Updating the site
 
-Edit and commit as usual (for example new prices in `shop.toml`), push to
-GitHub, then on the server:
+Once a change has been merged into `main` on GitHub (see
+[Making changes](#making-changes)), run this on the server:
 
 ```sh
 git pull
@@ -457,6 +573,8 @@ deploy/traefik/         the Traefik route for aetherandallure.com
 .env.example            template for .env (your Discord name and email, and any secrets)
 .devcontainer/          dev container settings and setup script
 .zed/                   Zed project settings and tasks
+.github/workflows/      the build check GitHub runs on pull requests into main
+.githooks/              the git hook that guards your own main branch
 rust-toolchain.toml     the Rust version and components
 index.html, Trunk.toml  page shell and build settings
 build.rs                fills in and checks shop.toml at build time

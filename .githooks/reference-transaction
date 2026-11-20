@@ -1,0 +1,93 @@
+#!/bin/sh
+# Keeps your main branch in step with GitHub's.
+#
+# Git runs this hook whenever it's about to move a branch. It lets your main
+# move only to the commit GitHub's main is on (origin/main), so
+#
+#     git pull --ff-only origin main
+#
+# works as usual, but a commit or merge that would put anything else on main
+# is stopped before main changes. Other branches aren't affected, and it
+# doesn't build or check anything.
+#
+# Turn it on once in each copy of the repository with:
+#
+#     git config core.hooksPath .githooks
+
+# Git calls this at several stages; only "prepared" can still stop a change.
+[ "$1" = prepared ] || exit 0
+
+# Each line is "<old> <new> <ref>". Note where main and GitHub's main are
+# going: both can move at once, as with `git fetch --atomic origin main:main`.
+input=$(cat)
+main_new=
+github_new=
+while read -r _ new ref; do
+    case $ref in
+        refs/heads/main) main_new=$new ;;
+        refs/remotes/origin/main) github_new=$new ;;
+    esac
+done <<EOF
+$input
+EOF
+
+# Main isn't moving: nothing to do.
+[ -n "$main_new" ] || exit 0
+
+# Deleting main is allowed; it can be made again from GitHub's.
+case $main_new in
+    *[!0]*) ;;
+    *) exit 0 ;;
+esac
+
+# Main may stay where it is, or move to where GitHub's main is (or is about
+# to be). Anything else is stopped.
+github=${github_new:-$(git rev-parse --quiet --verify refs/remotes/origin/main)}
+current=$(git rev-parse --quiet --verify refs/heads/main)
+if [ "$main_new" = "$current" ] || [ "$main_new" = "$github" ]; then
+    exit 0
+fi
+
+# Say how to tidy up after whatever was running.
+git_dir=$(git rev-parse --git-dir)
+parents=$(git rev-list --parents --max-count=1 "$main_new" 2>/dev/null | wc -w | tr -d ' ')
+elsewhere=$(git for-each-ref --contains "$main_new" --format='%(refname)' \
+    refs/heads refs/remotes 2>/dev/null | grep -v -x -e refs/heads/main)
+
+if [ "$(git symbolic-ref --quiet HEAD)" != refs/heads/main ]; then
+    tidy="Nothing else was changed."
+elif [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ]; then
+    tidy="Undo the rebase with:
+    git rebase --abort"
+elif git rev-parse --quiet --verify CHERRY_PICK_HEAD >/dev/null; then
+    tidy="Undo the cherry-pick with:
+    git cherry-pick --abort"
+elif git rev-parse --quiet --verify REVERT_HEAD >/dev/null; then
+    tidy="Undo the revert with:
+    git revert --abort"
+elif git rev-parse --quiet --verify MERGE_HEAD >/dev/null; then
+    tidy="Undo the merge with:
+    git merge --abort"
+elif [ -n "$elsewhere" ] || [ "${parents:-0}" -gt 2 ]; then
+    tidy="Git may already have changed your files. Put them back with:
+    git reset --merge"
+else
+    tidy="Your changes are still there, not committed yet. Make a branch for
+them, as below, and commit again there."
+fi
+
+cat >&2 <<EOF
+
+Stopped: your main branch only moves to match GitHub's main (origin/main),
+so it hasn't changed.
+
+$tidy
+
+Work on a branch instead:
+    git switch -c feature/<name>      (or fix/<name>)
+To bring main up to date with GitHub:
+    git switch main
+    git pull --ff-only origin main
+
+EOF
+exit 1
