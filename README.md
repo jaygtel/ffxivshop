@@ -8,596 +8,38 @@ own server. The code is kept on GitHub.
 
 © 2026 Jason Telford. Released under the [BSD 3-Clause License](LICENSE).
 
-## Editing the shop
+## Documentation
 
-Everything on the page comes from **`shop.toml`**. Each part is commented:
+How to edit the shop, work on the site and run it on your server is in the
+[wiki][wiki].
 
-| Section        | What it controls                                                        |
-| -------------- | ----------------------------------------------------------------------- |
-| `[site]`       | The site address and the copyright notice in the footer                  |
-| `[shop]`       | Name, owner, open/busy/closed status, crafter levels, ordering steps      |
-| `[location]`   | The house where buyers collect orders: world, district, ward and plot     |
-| `[contact]`    | `/tell`, friend request, message book, Discord, email, other links (your Discord name and email come from `.env`) |
-| `[[category]]` | The tabs above the item list                                             |
-| `[[item]]`     | One per listing: name, category, price in gil, ready time, HQ, notes     |
+### The shop
 
-Ready times are written like `"now"`, `"45m"`, `"6h"`, `"2d"`, `"1d 12h"` or `"1w"`.
-Leave out `price` to show "Ask". The order total then shows "Ask" too (or, for
-example, "12,000 + Ask"), so an order never looks free. `price_own_mats` adds a
-cheaper price for buyers who bring the materials.
+- [Editing the shop][]: what each part of [`shop.toml`](shop.toml) controls
+- [Adding items][]: looking items up with shop-tools
+- [Settings and secrets][]: `.env`, your Discord name and email, and secrets
+- [Item links and icons][]: Eorzea Database links, tooltips and icons
+- [Visitor orders][]: how a visitor's order is kept in their browser
 
-If something in `shop.toml` is wrong, the build stops and says exactly what to fix.
-When your own details are in, set `demo = false` to remove the "sample shop" notice.
+### Working on the site
 
-Your Discord name and email aren't written in `shop.toml`. They come from
-`.env` (`SHOP_DISCORD` and `SHOP_EMAIL`), so they stay out of the code and
-GitHub; see [Settings and secrets](#settings-and-secrets-env). The page still
-shows them on its contact card, as it has to. If one isn't set, the page shows
-an example in its place. Once you set `demo = false`, the build stops rather
-than do that, so the live site never shows the examples.
+- [Developing in the dev container][]: working in Zed, with every tool in a container
+- [Running it without the container][]: installing Rust and Trunk yourself
+- [Making changes][]: branches, pull requests and merging into `main`
+- [Build check][]: the check GitHub runs on every pull request into `main`
+- [Your own main branch][]: the git hook that guards `main` on your computer
 
-### Adding items
+### The server
 
-Write the in-game name, category, price and ready time, then run:
+- [Hosting on your server][]: what the server needs, and the first deploy
+- [Updating the site][]: putting merged changes live
 
-```sh
-cargo run -p shop-tools -- fill
-```
+### Reference
 
-It looks up each item's Eorzea Database link, icon, item level, level and jobs,
-and writes them into `shop.toml` without touching anything you've already set
-(comments and layout are kept). To search for an item first:
-
-```sh
-cargo run -p shop-tools -- find courtly lover's
-```
-
-After a game patch, add `--refresh` to download fresh item data.
-
-## Developing in the dev container (Zed)
-
-Everything needed to work on the site runs inside a container, so your
-computer only needs two things:
-
-- **Docker** (Docker Desktop on macOS and Windows, Docker Engine on Linux) or
-  Podman. With Podman, set `"use_podman": true` in Zed's settings.
-- **Zed**, recent enough to have dev container support.
-
-### First time
-
-1. Open this folder in Zed. When Zed asks, choose **Open in Container**. (If
-   you missed the prompt, run *Project: Open Remote* from the command palette
-   and pick the dev container.)
-2. Zed builds the image and starts the container. The first build takes a few
-   minutes; after that it starts in seconds.
-3. When it's ready, a terminal shows the installed tool versions. Zed's
-   terminals, tasks and rust-analyzer now all run inside the container.
-4. Make your `.env` and fill in your Discord name and email (see
-   [Settings and secrets](#settings-and-secrets-env)):
-
-   ```sh
-   cp .env.example .env
-   ```
-
-### Day to day
-
-Run tasks with *task: spawn* (`cmd-shift-r` on macOS, `alt-shift-t` on Linux and Windows):
-
-| Task                           | What it does                                                   |
-| ------------------------------ | -------------------------------------------------------------- |
-| `trunk serve`                  | Serves the site at http://localhost:8080, rebuilding on save   |
-| `trunk build --release`        | Builds the finished site into `dist/`                          |
-| `cargo test`                   | Runs the checks                                                |
-| `cargo clippy (site, wasm32)`  | Lints the site for the target it ships to                     |
-| `shop-tools: fill shop.toml`   | Looks up IDs, icons and stats for new items                    |
-| `shop-tools: find selected item` | Searches for the item name you've selected                   |
-| `leptosfmt: format view! macros` | Formats Leptos `view!` blocks, then everything else          |
-
-Saving a Rust file formats it with rustfmt and shows compiler and clippy
-warnings. `leptosfmt` isn't run on save because it removes the braces around
-`view!` attribute values; write comparisons there as `n != 0` rather than
-`n > 0`.
-
-### What's in the container
-
-Defined by the `dev` stage of the `Dockerfile`, on Debian 13 (trixie):
-
-- Rust, at the version set in `rust-toolchain.toml`, with rustfmt, clippy,
-  rust-analyzer, rust-src and the `wasm32-unknown-unknown` target
-- Trunk, wasm-bindgen (matching `Cargo.lock`) and wasm-opt (from Binaryen),
-  so builds never download tools
-- leptosfmt, git, a C compiler, curl, nano and sudo (no password)
-
-The versions of Trunk, wasm-bindgen, Binaryen and leptosfmt are set in the
-`Dockerfile` (`TRUNK_VERSION`, `WASM_BINDGEN_VERSION`, `BINARYEN_VERSION` and
-`LEPTOSFMT_VERSION`).
-
-Downloads are checked against the publishers' SHA-256 checksums. Both Intel/AMD
-(x86_64) and ARM (Apple Silicon) machines are supported.
-
-Build output, downloaded crates and your git settings live in Docker volumes
-named `aether-allure-*`, so rebuilding the container is quick and keeps them.
-Build output goes to the volume rather than `target/` in this folder; the
-finished site still goes to `dist/` here.
-
-### Git
-
-Zed's git panel works inside the container. Set your name and email once from
-its terminal (they're kept when the container is rebuilt):
-
-```sh
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
-```
-
-Your SSH keys stay on your computer, so if you push over SSH, push from a
-terminal on your computer (the folder is the same).
-
-### Changing the container
-
-Zed doesn't rebuild automatically. After editing `.devcontainer/` or the
-`Dockerfile`, stop the container (`docker ps` to find it, then
-`docker kill <name>`) and reopen the project in the container.
-
-- **Port 8080 in use:** change `forwardPorts` and `TRUNK_SERVE_PORT` in
-  `.devcontainer/devcontainer.json`.
-- **New Rust version:** change `channel` in `rust-toolchain.toml` and
-  `RUST_VERSION` in the Dockerfile to match.
-- **Updated wasm-bindgen:** if `cargo update` changes its version in
-  `Cargo.lock`, update `WASM_BINDGEN_VERSION` and its two checksums in the
-  Dockerfile (from the `.sha256sum` files on its GitHub release). Otherwise
-  Trunk downloads the matching version itself, which still works.
-- **Start fresh:** `docker volume rm` the `aether-allure-*` volumes.
-
-The container also works in VS Code and other editors that support dev
-containers.
-
-## Running it without the container
-
-1. Install Rust from [rustup.rs](https://rustup.rs). rustup reads
-   `rust-toolchain.toml` and installs the right version, components and
-   WebAssembly target the first time you run `cargo` here (or run
-   `rustup toolchain install`).
-2. Install Trunk: `cargo install --locked trunk`
-3. Run `trunk serve --open`. The site opens at http://localhost:8080 and
-   reloads whenever you save `shop.toml` or the code.
-
-`cargo test --workspace` runs the checks.
-
-## Making changes
-
-`main` is the only long-lived branch. It only changes through pull requests on
-GitHub, and a pull request can only be merged once GitHub has checked that the
-site builds.
-
-### Each change
-
-1. Make a branch for the feature or fix from an up-to-date `main`. Name it
-   `feature/…` or `fix/…`:
-
-   ```sh
-   git switch main
-   git pull --ff-only origin main
-   git switch -c feature/real-listings
-   ```
-
-2. Make the change and commit it on that branch. Before you open a pull
-   request, check it yourself: try it with `trunk serve`, run
-   `cargo test --workspace`, and make sure `trunk build --release` works.
-
-3. Push the branch and open a pull request into `main`:
-
-   ```sh
-   git push -u origin feature/real-listings
-   gh pr create --base main --head feature/real-listings
-   ```
-
-   If it finishes an issue, put `Closes #3` (with the issue's number) in the
-   description. When the pull request is merged, the issue closes and its card
-   moves to Done.
-
-4. GitHub builds the site for the pull request: this is the **Build** check.
-   Once it has passed, merge:
-
-   ```sh
-   gh pr checks --watch
-   gh pr merge --merge
-   ```
-
-   GitHub then deletes the branch.
-
-5. Bring your `main` up to date and delete your copy of the branch:
-
-   ```sh
-   git switch main
-   git pull --ff-only origin main
-   git branch -d feature/real-listings
-   git fetch --prune origin
-   ```
-
-**A branch inside a branch.** If a branch that's still open needs another fix
-or feature as part of its work, make that one from the open branch, and open
-its pull request back into it:
-
-```sh
-git switch -c fix/price-format feature/real-listings
-gh pr create --base feature/real-listings --head fix/price-format
-```
-
-Every branch merges back into the branch it was made from, so only finished
-work reaches `main`. GitHub only acts on `Closes #…` in pull requests into
-`main`, so put those lines in the pull request that goes into `main`.
-
-### The build check
-
-`.github/workflows/build.yml` runs on GitHub for every pull request into
-`main`. It builds the site the same way the server does, from the `site` stage
-of the `Dockerfile`, and keeps nothing. It never deploys: the server only
-updates when you run `docker compose up -d --build` there. It doesn't run the
-tests either; those are yours to run before you open a pull request.
-
-Your real Discord name and email stay in the server's `.env` and never go to
-GitHub, so the check builds with stand-ins. That way it still passes once you
-set `demo = false`.
-
-On GitHub, the **Protect main** ruleset only lets a pull request be merged when:
-
-- the **Build** check has passed, and
-- the branch is up to date with `main`, so the check has built exactly what
-  `main` will become.
-
-If GitHub says the branch is out of date (for example because another pull
-request was merged first), bring it up to date and the check runs again:
-
-```sh
-gh pr update-branch
-```
-
-That adds a commit to the branch on GitHub, so run `git pull` on the branch
-before you carry on with it. If the check fails, the pull request's **Details**
-link shows where. Fix it on the branch and push, and the check runs again.
-
-### Your own main branch
-
-The ruleset protects `main` on GitHub. Your own copy of `main` is protected by
-`.githooks/reference-transaction`, a git hook that only lets it move to match
-GitHub's `main`. Turn it on once, in this folder on your computer (the dev
-container uses the same folder, so it's on there too):
-
-```sh
-git config core.hooksPath .githooks
-```
-
-From then on, `git pull --ff-only origin main` works as usual, but a commit or
-merge on `main` is stopped before `main` changes, with a message saying what
-to do next:
-
-- After a stopped commit, your changes are still there, not committed yet.
-  Make a branch with `git switch -c feature/<name>` and commit again there.
-- After a stopped merge, git may already have changed your files.
-  `git reset --merge` puts them back.
-
-It only guards `main`. Other branches work as normal, and it doesn't build or
-check anything.
-
-## Hosting on your server
-
-The site runs on your server in a Docker container, behind your Traefik:
-
-```
-browser ─HTTPS─▶ Cloudflare ─HTTPS─▶ Traefik (websecure) ─HTTP─▶ aether-allure-site:8080
-```
-
-Traefik handles HTTPS with your Cloudflare Origin certificate, as it does for
-your other sites. Nothing in this project requests, renews or stores
-certificates. The container is nginx serving the built site. The server builds
-the image straight from this repository, so it only needs Docker.
-
-### What you need
-
-- Docker Engine with the Compose plugin on the server
-- Traefik with a file provider (dynamic YAML files), your Origin certificate on
-  the `websecure` entry point, and the `traefik_proxy` Docker network
-- In Cloudflare, for aetherandallure.com:
-  - DNS records for `aetherandallure.com` (and `www`, which redirects to it)
-    pointing at the server, proxied (orange cloud)
-  - SSL/TLS encryption mode set to **Full (strict)**
-  - **Always Use HTTPS** turned on (SSL/TLS → Edge Certificates), so
-    `http://` visits are redirected before they reach your server
-- An Origin certificate that covers `aetherandallure.com` and
-  `*.aetherandallure.com`. If the one Traefik serves was made for a different
-  domain, create one for this domain in Cloudflare (SSL/TLS → Origin Server)
-  and add it to the `tls.certificates` list in your Traefik config, next to the
-  existing one. Traefik picks the right certificate for each domain itself.
-
-### First deploy
-
-On the server:
-
-```sh
-git clone <your GitHub repository URL> aether-and-allure
-cd aether-and-allure
-cp .env.example .env               # then fill in SHOP_DISCORD and SHOP_EMAIL
-docker compose up -d --build
-```
-
-The first build compiles the site and takes several minutes. If SHOP_DISCORD
-or SHOP_EMAIL isn't set in `.env`, a live shop (`demo = false`) stops the build
-and says which, while a sample shop (`demo = true`) builds with the examples
-from `shop.toml` and a warning. Either way, fill them in in `.env` and run the
-`up` command again.
-
-The container joins your existing `traefik_proxy` network and publishes no
-ports on the server; Traefik reaches it by name through Docker's DNS. Then give
-Traefik the route by copying the dynamic config into the folder its file
-provider reads:
-
-```sh
-cp deploy/traefik/aether-allure.yml /path/to/traefik/dynamic/
-```
-
-Traefik loads it straight away if the file provider has `watch: true`;
-otherwise restart Traefik. To check:
-
-```sh
-docker compose ps                  # STATUS should end in (healthy)
-curl -I https://aetherandallure.com
-```
-
-If Traefik answers with "Bad Gateway", check that the site can be reached by
-name on the network:
-
-```sh
-docker run --rm --network traefik_proxy busybox wget -qO- http://aether-allure-site:8080/ | head -3
-```
-
-### The Traefik config
-
-`deploy/traefik/aether-allure.yml` sets up:
-
-- `aetherandallure.com` on `websecure`, sent to the container at
-  `http://aether-allure-site:8080`
-- `www.aetherandallure.com`, permanently redirected to
-  `https://aetherandallure.com` (keeping the rest of the address)
-
-Both routers have `tls: {}` and no `certResolver`, so Traefik serves the
-certificate it already has and never contacts Let's Encrypt. If your HTTPS entry
-point has a different name, change `websecure` in the file.
-
-### Updating the site
-
-Once a change has been merged into `main` on GitHub (see
-[Making changes](#making-changes)), run this on the server:
-
-```sh
-git pull
-docker compose up -d --build
-```
-
-Compiled dependencies are cached between builds, so updates are quick. Traefik
-keeps routing to the new container by name; copy `aether-allure.yml` again only
-if that file itself changed. After changing `.env` on the server, run
-`docker compose up -d --build` too: the values are built into the site.
-
-Every month or so, run `docker compose build --pull` before `up` to pick up
-security fixes in the nginx and Rust base images, and `docker image prune` to
-clear out old images. `docker compose logs -f` shows nginx's log (visitors
-appear with Traefik's address there; Traefik's access log has the real ones).
-`docker compose down` stops the site.
-
-### The container
-
-- nginx (`nginx/nginx-unprivileged`, Alpine, at the `NGINX_VERSION` set in
-  the `Dockerfile`), set up by `deploy/nginx.conf`
-- Runs as a non-root user, with a read-only filesystem and no Linux capabilities
-- Listens on port 8080 inside the container only. No ports are published on
-  the server: it's reachable just from the `traefik_proxy` network
-- Browsers keep the build files with hashed names (`.wasm`, `.js`, `.css`) for
-  a year and check everything else, including the page itself, on every visit,
-  so changes show up straight away
-- Has a health check, and its logs are capped at 30 MB
-
-## Settings and secrets (`.env`)
-
-`.env` holds your shop details that shouldn't live in the code, and anything
-secret the project ever needs. Make it from the template, on your computer and
-on the server, then fill in the values:
-
-```sh
-cp .env.example .env
-```
-
-It is:
-
-- ignored by git (see `.gitignore`), so it never reaches GitHub, and
-- ignored by Docker (see `.dockerignore`), so it's never copied into an image.
-
-**Shop details.** `SHOP_DISCORD` and `SHOP_EMAIL` hold your Discord username and
-email. `shop.toml` reads them as `${SHOP_DISCORD:-your.discord.name}` and
-`${SHOP_EMAIL:-commissions@example.com}`: the value from `.env`, or the example
-after `:-` when it isn't set. When an example is used, the build says so with a
-warning. Once the site is live (`demo = false`), it stops instead and lists
-what to set, so visitors never see the examples. Any double-quoted value in
-`shop.toml` can work the same way, with a name of its own that starts with
-`SHOP_`.
-
-- These aren't secrets: every visitor sees them on the contact card. Keeping
-  them in `.env` keeps them out of the code and GitHub.
-- Only names that start with `SHOP_` are read, and whatever they hold is
-  published on the page. So never give a real secret a `SHOP_` name.
-- The values are built into the site:
-  - on your computer, the build reads `.env` directly, and `trunk serve`
-    rebuilds by itself when you save it;
-  - on the server, Docker Compose reads `.env` and passes the values to the
-    build (`args:` in `compose.yaml`), so run `docker compose up -d --build`
-    after changing it. If that build stops, the site that's already running
-    carries on as it was.
-- Keep a `.env` on your computer even if you leave the values empty. Without
-  one, every build has to recompile the shop.
-
-**Secrets.** The site itself has no secrets: it's static. Never put passwords,
-tokens or keys in `shop.toml` or the code. If you add something secret later,
-put it in `.env` under a name that doesn't start with `SHOP_`, add its name
-(without the value) to `.env.example`, and pass it to the container under
-`environment:` in `compose.yaml`. `git status` should never list `.env`.
-
-Your Cloudflare Origin certificate and its private key belong with Traefik's
-own config. Never copy them into this repository.
-
-## The look, logo and hero
-
-The site is styled like the Aether & Allure coming-soon page: a night sky of
-deep indigo glows with a slow aurora, twinkling stars and motes of aether
-(drawn by `src/components/sky.rs`), and dark glass windows framed in gold with
-gold corner pieces. Headings and labels are set in **Cinzel** and the hero's
-lines in **Cormorant Garamond** italic, the same fonts as the coming-soon page.
-Everything else, the text in the windows included, is set in **Alegreya Sans**,
-which reads easily at small sizes. The colours are listed at the top of
-`assets/css/main.css`.
-
-`assets/img/logo.svg` is the emblem: an aether crystal on a night-blue disc in
-gold rings, on a transparent background. The disc carries its own contrast, so
-it works on any background; its outer ring turns a deeper gold on light
-backgrounds (following the viewer's light or dark mode). A page that inlines it
-can choose that gold with the `--aa-accent` CSS custom property.
-
-`assets/img/favicon.svg` and `assets/img/apple-touch-icon.png` are the
-coming-soon page's own: the crystal, outlined in gold, with light and dark
-versions in the SVG.
-
-`assets/img/favicon.ico` is a fallback copy of the favicon (16, 32 and 48
-pixels, in its light-background colours) for places that can't show SVG, such
-as Google Search results, older Safari and tools that only ever ask for
-`/favicon.ico`. Browsers that can show the SVG (Chrome, Edge, Firefox) still use
-it: the `sizes="32x32"` on the ICO's link in `index.html` is what stops Chrome
-from choosing the ICO instead. If the favicon's design changes, remake the ICO
-too.
-
-The site opens with a full-screen hero built like the coming-soon page: the
-emblem floating over a panel of dark glass framed in gold, holding «Master
-Artisan», the shop's name in shimmering gold, the divider, whether orders are
-open (where the coming-soon page says "Coming soon"), the tagline and status
-note, and an **Order Now** button that scrolls down to the shop. Its words
-come from `shop.toml` (`title`, `name`, `status`, `tagline`, `status_note`).
-On shorter screens (most laptops, small phones, phones on their side) it gets
-more compact, so it always fits on one screen. The crafting jobs and their
-levels (`[shop.crafters]`) sit just above the wares window.
-
-When the page opens, `assets/js/intro.js` plays the coming-soon page's intro,
-about six seconds: the name is written in aether fire, glides up into its
-place while the words around it fade in, then the crystal appears and the gold
-border draws itself. Any click, tap, key or scroll skips straight to the
-finished hero. It doesn't play for visitors who prefer reduced motion, or when
-the page opens at a link such as `#housing`, and if the script can't load the
-hero simply shows finished. Its letter outlines are drawn for the name
-"Aether & Allure"; with another name the hero shows without the intro. The
-emblem's rings turn, its crystal floats and the name shimmers, as on the
-coming-soon page (none of it moves with reduced motion).
-
-`assets/img/hero.svg` is the same lockup as a standalone picture (the emblem,
-«Master Artisan», the name and the tagline, on a transparent background),
-published as `/assets/img/hero.svg` for use elsewhere; the page itself doesn't
-use it. It
-arranges itself for the space it has (emblem beside the text in landscape,
-stacked when narrower than 5:4), and draws in gold and night blue on dark
-backgrounds or deeper golds and slate on light ones. As an image it has no
-fixed size: give it a width and the aspect ratio listed at the top of the file.
-Its lettering is drawn as shapes, so its words are fixed, as on the preview
-card: different wording means redrawing both.
-
-`assets/img/og-card.png` is the preview image shown when the link is shared on
-Discord and elsewhere: the coming-soon page's preview card, with the shop's
-name, «Master Artisan», the tagline and the web address.
-
-Once the hero has scrolled away, a **Back to top** button fades into the
-bottom-right corner. On wide windows (about 1376px and up) the margin beside the
-page has room for it, so it shows straight away. On narrower windows it would
-cover the page as it scrolls past, so it waits until you reach the very bottom,
-where it sits in the empty space below the footer. It's always hidden while the
-hero is on screen and whenever the page is stacked (960px wide and under).
-
-The letterforms in `hero.svg`, `og-card.png` and the intro are drawn from
-Cinzel and Cormorant Garamond (SIL Open Font License).
-
-### Where the files go
-
-Everything the page loads lives in `assets/`, sorted by type, and the built
-site keeps the same layout. Trunk does the copying, as listed in `index.html`:
-
-```
-assets/
-  css/    main.css, the stylesheet
-  fonts/  the fonts, with their licences
-  img/    favicon.svg, favicon.ico, apple-touch-icon.png, og-card.png,
-          logo.svg, hero.svg
-  js/     intro.js
-```
-
-The shop's own script and WebAssembly are built into `assets/js` as well, and
-the stylesheet into `assets/css`, with a fingerprint in their names so browsers
-can keep them for a year. Two files go at the top level of the built site
-instead: `favicon.ico` and `apple-touch-icon.png`, because browsers, Google and
-iPhones ask for `/favicon.ico` and `/apple-touch-icon.png` by name. So the site
-serves `index.html` and those two at the top, and everything else under
-`/assets/`, such as `/assets/img/og-card.png` and `/assets/img/hero.svg`.
-
-## Visitors' orders
-
-A visitor's order (the items, the note, the "I'll bring the materials" tick and
-their character name) is saved in their own browser, so it survives a reload.
-It's never sent to the server.
-
-It's kept for 12 hours after its last change, then cleared, unless they clear
-it first. A small cookie, `ffxiv-shop.order-expires`, keeps the time: each
-change sets it again for 12 hours (opening the page doesn't), and once the
-browser has deleted it, the page clears the whole order. That happens when the
-page is next opened, or within a minute if it's still open. The cookie holds
-only that time, and the server ignores it. **Clear order** empties the item
-list but keeps the note, tick and name; those go when the 12 hours run out.
-Where a browser has cookies turned off, the order is kept with no time limit.
-
-## Item links, tooltips and icons
-
-- Item names link to the official **Eorzea Database** on The Lodestone
-  (`lodestone = "eu"` in `shop.toml`; `na`, `fr`, `de` and `jp` also work).
-- Hovering a link shows Square Enix's official Eorzea Database tooltip
-  (`tooltips = false` turns this off).
-- Item icons are loaded from [XIVAPI](https://v2.xivapi.com) (`icons = false`
-  shows the drawn category symbols instead).
-- `shop-tools` looks items up in [FFXIV Teamcraft](https://github.com/ffxiv-teamcraft/ffxiv-teamcraft)'s
-  game data and [Asvel's Eorzea Database ID list](https://github.com/Asvel/ffxiv-lodestone-item-id).
-
-## Project layout
-
-```
-shop.toml               the shop's details: edit this
-Dockerfile              the dev container and the server image (four stages)
-compose.yaml            runs the site on your server
-deploy/nginx.conf       the web server's settings, inside the container
-deploy/traefik/         the Traefik route for aetherandallure.com
-.env.example            template for .env (your Discord name and email, and any secrets)
-.gitignore              keeps .env and build output out of git
-.dockerignore           keeps .env and other files out of Docker builds
-.devcontainer/          dev container settings and setup script
-.zed/                   Zed project settings and tasks
-.github/workflows/      the build check GitHub runs on pull requests into main
-.githooks/              the git hook that guards your own main branch
-rust-toolchain.toml     the Rust version and components
-rustfmt.toml            how rustfmt formats the code
-Cargo.toml, Cargo.lock  the Rust packages and the exact crate versions
-index.html, Trunk.toml  page shell and build settings
-build.rs                fills in and checks shop.toml at build time
-src/main.rs             starts the site
-src/app.rs              puts the parts of the page together
-src/model.rs            reads and checks shop.toml
-src/vars.rs             fills in shop.toml's ${SHOP_…} values from .env
-src/order.rs            the visitor's order and the messages they copy
-src/browser.rs          small wrappers around the browser features the site uses
-src/components/         the parts of the page
-assets/                 stylesheet, fonts, images and the intro, by type
-tools/                  shop-tools, the item lookup helper
-LICENSE                 BSD 3-Clause License
-```
+- [Site design][]: the look, fonts, logo, icons, hero and intro
+- [Assets][]: where the page's files live, and where the build puts them
+- [Project layout][]: what each file and folder is for
+- [License and credits][]: copyright, the licence, the fonts and Square Enix's notice
 
 ## License and credits
 
@@ -605,8 +47,26 @@ The code and site design are © 2026 Jason Telford, released under the
 [BSD 3-Clause License](LICENSE).
 
 Fonts: Cinzel, Cormorant Garamond and Alegreya Sans, under their own SIL Open
-Font License 1.1 (see `assets/fonts`).
+Font License 1.1 (see [`assets/fonts`](assets/fonts)).
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a
 registered trademark of Square Enix Holdings Co., Ltd. This is an unofficial fan
 site and isn't affiliated with or endorsed by Square Enix.
+
+[wiki]: https://github.com/jaygtel/ffxivshop/wiki
+[Editing the shop]: https://github.com/jaygtel/ffxivshop/wiki/Editing-the-shop
+[Adding items]: https://github.com/jaygtel/ffxivshop/wiki/Adding-items
+[Settings and secrets]: https://github.com/jaygtel/ffxivshop/wiki/Settings-and-secrets
+[Item links and icons]: https://github.com/jaygtel/ffxivshop/wiki/Item-links-and-icons
+[Visitor orders]: https://github.com/jaygtel/ffxivshop/wiki/Visitor-orders
+[Developing in the dev container]: https://github.com/jaygtel/ffxivshop/wiki/Developing-in-the-dev-container
+[Running it without the container]: https://github.com/jaygtel/ffxivshop/wiki/Running-it-without-the-container
+[Making changes]: https://github.com/jaygtel/ffxivshop/wiki/Making-changes
+[Build check]: https://github.com/jaygtel/ffxivshop/wiki/Build-check
+[Your own main branch]: https://github.com/jaygtel/ffxivshop/wiki/Your-own-main-branch
+[Hosting on your server]: https://github.com/jaygtel/ffxivshop/wiki/Hosting-on-your-server
+[Updating the site]: https://github.com/jaygtel/ffxivshop/wiki/Updating-the-site
+[Site design]: https://github.com/jaygtel/ffxivshop/wiki/Site-design
+[Assets]: https://github.com/jaygtel/ffxivshop/wiki/Assets
+[Project layout]: https://github.com/jaygtel/ffxivshop/wiki/Project-layout
+[License and credits]: https://github.com/jaygtel/ffxivshop/wiki/License-and-credits
