@@ -1,7 +1,7 @@
 //! Small wrappers around the browser features the shop uses. Each one fails
 //! quietly, so the shop still works where storage or the clipboard is blocked.
 
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 
 /// The part of the address after `#`, e.g. "housing".
 pub fn hash() -> String {
@@ -12,9 +12,30 @@ pub fn hash() -> String {
         .to_string()
 }
 
+/// Sets the part of the address after `#`, as a new history entry, so Back
+/// returns to the one before. An empty value takes the `#` off altogether,
+/// without moving the page: a bare `#` would send the browser to the top.
 pub fn set_hash(value: &str) {
-    if let Some(window) = web_sys::window() {
-        let _ = window.location().set_hash(value);
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let location = window.location();
+    if !value.is_empty() {
+        let _ = location.set_hash(value);
+        return;
+    }
+    // Nothing to take off. (The hash of "page/#" reads as "", so this looks
+    // at the whole address.)
+    if !location.href().unwrap_or_default().contains('#') {
+        return;
+    }
+    let address = format!(
+        "{}{}",
+        location.pathname().unwrap_or_default(),
+        location.search().unwrap_or_default()
+    );
+    if let Ok(history) = window.history() {
+        let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&address));
     }
 }
 
@@ -38,6 +59,55 @@ pub fn save(key: &str, value: &str) {
     if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
         let _ = storage.set_item(key, value);
     }
+}
+
+/// Reads a cookie this site has set.
+pub fn cookie(name: &str) -> Option<String> {
+    let cookies = html_document()?.cookie().ok()?;
+    cookies.split(';').find_map(|pair| {
+        let (key, value) = pair.trim().split_once('=')?;
+        (key == name).then(|| value.to_string())
+    })
+}
+
+/// Sets a cookie for this site that the browser deletes by itself after
+/// `max_age` seconds (0 deletes it straight away). It's for the page's own
+/// use: it goes along with requests to the site, but the server ignores it.
+pub fn set_cookie(name: &str, value: &str, max_age: u32) {
+    let Some(document) = html_document() else {
+        return;
+    };
+    // Secure wherever the site is served over HTTPS. It's left off on plain
+    // http://localhost (trunk serve), where some browsers would refuse it.
+    let https = web_sys::window()
+        .and_then(|w| w.location().protocol().ok())
+        .is_some_and(|protocol| protocol == "https:");
+    let secure = if https { "; Secure" } else { "" };
+    let _ = document.set_cookie(&format!(
+        "{name}={value}; Max-Age={max_age}; Path=/; SameSite=Lax{secure}"
+    ));
+}
+
+/// Whether this browser keeps cookies for the site.
+pub fn cookies_enabled() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    // Looked up dynamically, as web-sys doesn't have it.
+    let navigator: JsValue = window.navigator().into();
+    js_sys::Reflect::get(&navigator, &"cookieEnabled".into())
+        .ok()
+        .and_then(|enabled| enabled.as_bool())
+        .unwrap_or(false)
+}
+
+/// The time now, in milliseconds since 1970.
+pub fn now() -> f64 {
+    js_sys::Date::now()
+}
+
+fn html_document() -> Option<web_sys::HtmlDocument> {
+    web_sys::window()?.document()?.dyn_into().ok()
 }
 
 /// Copies text to the clipboard. Returns false if the browser refused, so the
@@ -120,6 +190,52 @@ pub fn focus_quietly(id: &str) {
     let options = web_sys::FocusOptions::new();
     options.set_prevent_scroll(true);
     let _ = element.focus_with_options(&options);
+}
+
+/// Whether the page is scrolled all the way down, give or take `slack` pixels.
+pub fn at_bottom(slack: f64) -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    let Some(root) = window.document().and_then(|d| d.document_element()) else {
+        return false;
+    };
+    let window_height = window
+        .inner_height()
+        .ok()
+        .and_then(|h| h.as_f64())
+        .unwrap_or(0.0);
+    let scrolled = window.scroll_y().unwrap_or(0.0);
+    scrolled + window_height >= f64::from(root.scroll_height()) - slack
+}
+
+/// Calls `changed` whenever the first element matching `selector` changes
+/// size, and once when it starts (after the page is laid out). It keeps
+/// watching for as long as the returned `SizeWatch` is kept.
+pub fn watch_size(selector: &str, changed: impl Fn() + 'static) -> Option<SizeWatch> {
+    let element = web_sys::window()?
+        .document()?
+        .query_selector(selector)
+        .ok()??;
+    let changed = Closure::<dyn Fn()>::new(changed);
+    let observer = web_sys::ResizeObserver::new(changed.as_ref().unchecked_ref()).ok()?;
+    observer.observe(&element);
+    Some(SizeWatch {
+        observer,
+        _changed: changed,
+    })
+}
+
+/// Stops watching when dropped. See `watch_size`.
+pub struct SizeWatch {
+    observer: web_sys::ResizeObserver,
+    _changed: Closure<dyn Fn()>,
+}
+
+impl Drop for SizeWatch {
+    fn drop(&mut self) {
+        self.observer.disconnect();
+    }
 }
 
 /// Where the first element matching `selector` is, relative to the window.

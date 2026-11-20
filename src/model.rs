@@ -119,11 +119,6 @@ pub struct Location {
     /// "Small", "Medium" or "Large".
     #[serde(default)]
     pub size: Option<String>,
-    /// Your retainer's name.
-    pub retainer: String,
-    /// Where on the plot the retainer stands.
-    #[serde(default)]
-    pub spot: Option<String>,
     #[serde(default)]
     pub note: Option<String>,
 }

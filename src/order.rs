@@ -1,11 +1,19 @@
 //! The visitor's order: what they've picked, how many, and the messages they
-//! can copy to send you. It's saved in their browser so it survives a reload.
+//! can copy to send you. It's saved in their browser so it survives a reload,
+//! and cleared once it has gone 12 hours without a change.
 
 use crate::browser;
 use crate::model::{Ready, Shop, gil};
 use leptos::prelude::*;
+use std::time::Duration;
 
 const STORAGE_KEY: &str = "ffxiv-shop.order";
+
+/// The cookie that keeps a saved order. Each change to the order sets it
+/// again for 12 hours; when the browser deletes it, the order is cleared.
+/// Its value is the time it runs out, in milliseconds since 1970.
+const KEEP_COOKIE: &str = "ffxiv-shop.order-expires";
+const KEEP_FOR_SECONDS: u32 = 12 * 60 * 60;
 
 #[derive(Clone, Copy)]
 pub struct Order {
@@ -20,9 +28,28 @@ pub struct Order {
 }
 
 pub struct Totals {
+    /// What the items with a price come to.
     pub gil: u64,
-    /// Lines without a price ("Ask").
+    /// Lines with a price.
+    pub priced: usize,
+    /// Lines with no price yet ("Ask").
     pub unpriced: usize,
+}
+
+impl Totals {
+    /// The total for a message: "12,000 gil", or "12,000 gil, plus the items
+    /// with no price yet". None when nothing has a price yet, because a total
+    /// of 0 gil would look free.
+    pub fn in_words(&self) -> Option<String> {
+        if self.priced == 0 {
+            return None;
+        }
+        let mut words = format!("{} gil", gil(self.gil));
+        if self.unpriced > 0 {
+            words.push_str(", plus the items with no price yet");
+        }
+        Some(words)
+    }
 }
 
 impl Order {
@@ -60,8 +87,67 @@ impl Order {
             character: RwSignal::new(character),
             note: RwSignal::new(note),
         };
-        Effect::new(move |_| browser::save(STORAGE_KEY, &order.saved_text()));
+        // An order left for 12 hours is gone before the page shows it.
+        order.forget_if_stale();
+
+        Effect::new(move |before: Option<String>| {
+            let text = order.saved_text();
+            browser::save(STORAGE_KEY, &text);
+            if !order.holds_anything() {
+                // Nothing left to keep.
+                browser::set_cookie(KEEP_COOKIE, "", 0);
+            } else if before.is_some_and(|before| before != text) {
+                // A change, so the 12 hours start again. Opening the page
+                // isn't a change: the order keeps the time it had.
+                let until = browser::now() + f64::from(KEEP_FOR_SECONDS) * 1000.0;
+                browser::set_cookie(KEEP_COOKIE, &format!("{until:.0}"), KEEP_FOR_SECONDS);
+            }
+            text
+        });
+
+        // While the page is open, it checks once a minute, and straight away
+        // when the visitor comes back to the tab or returns to the page with
+        // Back, so an order left open overnight goes too.
+        let check = move || order.forget_if_stale();
+        let every_minute = set_interval_with_handle(check, Duration::from_secs(60)).ok();
+        let on_return = window_event_listener_untyped("visibilitychange", move |_| check());
+        let on_back = window_event_listener_untyped("pageshow", move |_| check());
+        on_cleanup(move || {
+            if let Some(timer) = every_minute {
+                timer.clear();
+            }
+            on_return.remove();
+            on_back.remove();
+        });
         order
+    }
+
+    /// Clears the whole order (items, note, materials tick and character)
+    /// once it has gone 12 hours without a change, which is when the browser
+    /// deletes its cookie. Where cookies are turned off, there's no cookie to
+    /// go by, so the order is kept.
+    fn forget_if_stale(&self) {
+        if !self.holds_anything() || !browser::cookies_enabled() {
+            return;
+        }
+        let fresh = browser::cookie(KEEP_COOKIE)
+            .and_then(|until| until.parse::<f64>().ok())
+            .is_some_and(|until| browser::now() < until);
+        if !fresh {
+            self.lines.set(Vec::new());
+            self.own_mats.set(false);
+            self.character.set(String::new());
+            self.note.set(String::new());
+        }
+    }
+
+    /// Whether there's anything to save: items, the materials tick, a
+    /// character name or a note.
+    fn holds_anything(&self) -> bool {
+        self.lines.with_untracked(|lines| !lines.is_empty())
+            || self.own_mats.get_untracked()
+            || self.character.with_untracked(|me| !me.is_empty())
+            || self.note.with_untracked(|note| !note.is_empty())
     }
 
     fn saved_text(&self) -> String {
@@ -148,11 +234,15 @@ impl Order {
     pub fn totals(&self) -> Totals {
         let mut totals = Totals {
             gil: 0,
+            priced: 0,
             unpriced: 0,
         };
         for (index, qty) in self.lines.get() {
             match self.unit_price(index) {
-                Some(price) => totals.gil += price * u64::from(qty),
+                Some(price) => {
+                    totals.gil += price * u64::from(qty);
+                    totals.priced += 1;
+                }
                 None => totals.unpriced += 1,
             }
         }
@@ -184,12 +274,10 @@ impl Order {
             list.join(", ")
         );
         let totals = self.totals();
-        if totals.gil > 0 {
-            text.push_str(&format!(" That comes to {} gil", gil(totals.gil)));
-            if totals.unpriced > 0 {
-                text.push_str(" plus the items priced on request");
-            }
-            text.push('.');
+        match totals.in_words() {
+            Some(total) => text.push_str(&format!(" That comes to {total}.")),
+            None if totals.unpriced > 0 => text.push_str(" Please tell me the price."),
+            None => {}
         }
         if self.using_own_mats() {
             text.push_str(" I'll bring the materials.");
@@ -212,15 +300,15 @@ impl Order {
                     "- {qty}x {name} ({} gil)\n",
                     gil(price * u64::from(qty))
                 )),
-                None => text.push_str(&format!("- {qty}x {name} (price on request)\n")),
+                None => text.push_str(&format!("- {qty}x {name} (no price yet)\n")),
             }
         }
         let totals = self.totals();
-        text.push_str(&format!("Total: {} gil", gil(totals.gil)));
-        if totals.unpriced > 0 {
-            text.push_str(" plus the items priced on request");
+        match totals.in_words() {
+            Some(total) => text.push_str(&format!("Total: {total}\n")),
+            None if totals.unpriced > 0 => text.push_str("Please tell me the price.\n"),
+            None => {}
         }
-        text.push('\n');
         if self.using_own_mats() {
             text.push_str("I'll bring the materials.\n");
         }
@@ -234,5 +322,39 @@ impl Order {
             text.push_str(&format!("My character: {}\n", me.trim()));
         }
         text.trim_end().to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Totals;
+
+    fn totals(gil: u64, priced: usize, unpriced: usize) -> Totals {
+        Totals {
+            gil,
+            priced,
+            unpriced,
+        }
+    }
+
+    #[test]
+    fn a_priced_order_gives_its_total() {
+        assert_eq!(
+            totals(12_000, 2, 0).in_words().as_deref(),
+            Some("12,000 gil")
+        );
+    }
+
+    #[test]
+    fn items_with_no_price_are_named_after_the_total() {
+        assert_eq!(
+            totals(12_000, 1, 1).in_words().as_deref(),
+            Some("12,000 gil, plus the items with no price yet")
+        );
+    }
+
+    #[test]
+    fn an_order_with_no_prices_has_no_total_rather_than_zero() {
+        assert_eq!(totals(0, 0, 2).in_words(), None);
     }
 }

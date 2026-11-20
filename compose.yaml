@@ -16,6 +16,12 @@ services:
     build:
       context: .
       target: site
+      # The shop details shop.toml reads from .env (see .env.example).
+      # Compose reads .env itself and hands these to the build; they end up
+      # on the page, so they aren't secrets.
+      args:
+        SHOP_DISCORD: ${SHOP_DISCORD:-}
+        SHOP_EMAIL: ${SHOP_EMAIL:-}
     image: aether-allure-site:latest
     # The name Traefik uses to reach it (see deploy/traefik/aether-allure.yml).
     container_name: aether-allure-site
