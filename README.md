@@ -1,3 +1,5 @@
+![Aether & Allure, Master Artisan: crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.](assets/img/og-card.png)
+
 # Aether & Allure
 
 The website for **Aether & Allure**, Sigrid Halvorsen's crafting shop in
