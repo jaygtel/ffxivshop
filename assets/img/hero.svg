@@ -11,7 +11,10 @@
        Colours: the coming-soon page's gold and night blue on dark backgrounds,
        deeper golds and slate on light ones (see the style below).
        The lettering is drawn as shapes, so the words are fixed: generated from
-       the site's fonts (Cinzel, Cormorant Garamond; SIL OFL). -->
+       the site's fonts (Cinzel, Cormorant Garamond; SIL OFL).
+       Copyright 2026 Jason Telford. All rights reserved. This artwork is not
+       covered by the BSD licence that covers the site's code, or by the
+       fonts' licence. -->
   <title id="aah-title">Aether &amp; Allure</title>
   <desc id="aah-desc">«Master Artisan». Crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.</desc>
   <style>
