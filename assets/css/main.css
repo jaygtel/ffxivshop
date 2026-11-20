@@ -883,6 +883,8 @@ html.intro .hero .panel::after {
   backdrop-filter: blur(12px) saturate(125%);
 }
 
+/* The corner pieces are Aether & Allure artwork, drawn as SVG: all rights
+   reserved, and not covered by the BSD licence (see NOTICE.md). */
 .window::before {
   content: "";
   position: absolute;

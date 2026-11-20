@@ -3,7 +3,9 @@
        on a night-blue disc in gold rings. Transparent around the disc. Its
        outer ring is gold on dark backgrounds and deeper gold on light ones
        (following the colour scheme); a page that inlines it can choose that
-       gold with the custom property aa-accent. -->
+       gold with the custom property aa-accent.
+       Copyright 2026 Jason Telford. All rights reserved. This artwork is not
+       covered by the BSD licence that covers the site's code. -->
   <title id="aal-title">Aether &amp; Allure</title>
   <style>
     :root { color-scheme: light dark; }

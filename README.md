@@ -8,7 +8,9 @@ It's written in Rust and compiled to WebAssembly with [Leptos](https://leptos.de
 built with [Trunk](https://trunkrs.dev), and runs in a Docker container on your
 own server. The code is kept on GitHub.
 
-© 2026 Jason Telford. Released under the [BSD 3-Clause License](LICENSE).
+© 2026 Jason Telford. The code is released under the
+[BSD 3-Clause License](LICENSE); the logos, artwork and branding are not (see
+[License and credits](#license-and-credits)).
 
 ## Documentation
 
@@ -41,19 +43,29 @@ How to edit the shop, work on the site and run it on your server is in the
 - [Site design][]: the look, fonts, logo, icons, hero and intro
 - [Assets][]: where the page's files live, and where the build puts them
 - [Project layout][]: what each file and folder is for
-- [License and credits][]: copyright, the licence, the fonts and Square Enix's notice
+- [License and credits][]: which licence covers the code, the art and branding, the fonts and the game material
 
 ## License and credits
 
-The code and site design are © 2026 Jason Telford, released under the
-[BSD 3-Clause License](LICENSE).
+© 2026 Jason Telford. The [BSD 3-Clause License](LICENSE) covers the software
+only. [`NOTICE.md`](NOTICE.md) lists what falls under each of these:
 
-Fonts: Cinzel, Cormorant Garamond and Alegreya Sans, under their own SIL Open
-Font License 1.1 (see [`assets/fonts`](assets/fonts)).
+| Material | Terms |
+| --- | --- |
+| Rust application code | BSD 3-Clause License |
+| JavaScript and development tools | BSD 3-Clause License |
+| CSS implementation | BSD 3-Clause License |
+| Original logos and artwork | All rights reserved |
+| Original branding and visual identity | All rights reserved |
+| Third-party fonts: Cinzel, Cormorant Garamond and Alegreya Sans | Their own SIL Open Font License 1.1 (see [`assets/fonts`](assets/fonts)) |
+| Third-party game data and assets | Their respective terms |
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a
 registered trademark of Square Enix Holdings Co., Ltd. This is an unofficial fan
-site and isn't affiliated with or endorsed by Square Enix.
+site and isn't affiliated with or endorsed by Square Enix. The game material is
+used under Square Enix's FINAL FANTASY XIV Materials Usage Policy
+([Europe](https://support.eu.square-enix.com/rule.php?id=5383&la=2&tag=authc),
+[North America](https://support.na.square-enix.com/rule.php?id=5382&la=1&tag=authc)).
 
 [wiki]: https://github.com/jaygtel/ffxivshop/wiki
 [Editing the shop]: https://github.com/jaygtel/ffxivshop/wiki/Editing-the-shop
