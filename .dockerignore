@@ -9,5 +9,8 @@ dist/
 .devcontainer/
 .zed/
 *.zip
+# GitHub's build check and the git hook (not needed inside images)
+.github/
+.githooks/
 # Docker Compose files (not needed inside images)
 compose*.yaml
