@@ -102,11 +102,15 @@ warnings. `leptosfmt` isn't run on save because it removes the braces around
 
 Defined by the `dev` stage of the `Dockerfile`, on Debian 13 (trixie):
 
-- Rust 1.97.0 (from `rust-toolchain.toml`) with rustfmt, clippy,
+- Rust, at the version set in `rust-toolchain.toml`, with rustfmt, clippy,
   rust-analyzer, rust-src and the `wasm32-unknown-unknown` target
-- Trunk 0.22.1, wasm-bindgen 0.2.130 (matching `Cargo.lock`) and wasm-opt
-  (Binaryen 131), so builds never download tools
-- leptosfmt 0.1.33, git, a C compiler, curl, nano and sudo (no password)
+- Trunk, wasm-bindgen (matching `Cargo.lock`) and wasm-opt (from Binaryen),
+  so builds never download tools
+- leptosfmt, git, a C compiler, curl, nano and sudo (no password)
+
+The versions of Trunk, wasm-bindgen, Binaryen and leptosfmt are set in the
+`Dockerfile` (`TRUNK_VERSION`, `WASM_BINDGEN_VERSION`, `BINARYEN_VERSION` and
+`LEPTOSFMT_VERSION`).
 
 Downloads are checked against the publishers' SHA-256 checksums. Both Intel/AMD
 (x86_64) and ARM (Apple Silicon) machines are supported.
@@ -178,8 +182,8 @@ site builds.
    ```
 
 2. Make the change and commit it on that branch. Before you open a pull
-   request, check it yourself: try it with `trunk serve`, run `cargo test`, and
-   make sure `trunk build --release` works.
+   request, check it yourself: try it with `trunk serve`, run
+   `cargo test --workspace`, and make sure `trunk build --release` works.
 
 3. Push the branch and open a pull request into `main`:
 
@@ -383,7 +387,8 @@ appear with Traefik's address there; Traefik's access log has the real ones).
 
 ### The container
 
-- nginx 1.30 (`nginx/nginx-unprivileged`, Alpine), set up by `deploy/nginx.conf`
+- nginx (`nginx/nginx-unprivileged`, Alpine, at the `NGINX_VERSION` set in
+  the `Dockerfile`), set up by `deploy/nginx.conf`
 - Runs as a non-root user, with a read-only filesystem and no Linux capabilities
 - Listens on port 8080 inside the container only. No ports are published on
   the server: it's reachable just from the `traefik_proxy` network
@@ -571,18 +576,24 @@ compose.yaml            runs the site on your server
 deploy/nginx.conf       the web server's settings, inside the container
 deploy/traefik/         the Traefik route for aetherandallure.com
 .env.example            template for .env (your Discord name and email, and any secrets)
+.gitignore              keeps .env and build output out of git
+.dockerignore           keeps .env and other files out of Docker builds
 .devcontainer/          dev container settings and setup script
 .zed/                   Zed project settings and tasks
 .github/workflows/      the build check GitHub runs on pull requests into main
 .githooks/              the git hook that guards your own main branch
 rust-toolchain.toml     the Rust version and components
+rustfmt.toml            how rustfmt formats the code
+Cargo.toml, Cargo.lock  the Rust packages and the exact crate versions
 index.html, Trunk.toml  page shell and build settings
 build.rs                fills in and checks shop.toml at build time
+src/main.rs             starts the site
+src/app.rs              puts the parts of the page together
 src/model.rs            reads and checks shop.toml
 src/vars.rs             fills in shop.toml's ${SHOP_…} values from .env
 src/order.rs            the visitor's order and the messages they copy
+src/browser.rs          small wrappers around the browser features the site uses
 src/components/         the parts of the page
-assets/css/main.css     the look
 assets/                 stylesheet, fonts, images and the intro, by type
 tools/                  shop-tools, the item lookup helper
 LICENSE                 BSD 3-Clause License
