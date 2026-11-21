@@ -1,15 +1,17 @@
-//! A button in the bottom-right corner that goes back to the top of the page.
-//! It never shows while the hero is on screen. After that:
+//! A button in the bottom-right corner of the shop page that goes back to the
+//! top. It never shows on the first screen of the page, the height of the
+//! window (where the hero used to be, before the shop had a page of its own).
+//! After that:
 //!
 //! - where the margin beside the page content has room for it (wide windows),
-//!   it shows as soon as the hero has scrolled away;
+//!   it shows as soon as the first screen has scrolled away;
 //! - where it doesn't, it would cover the page as it scrolls past, so it waits
 //!   until the page is scrolled all the way down, then shows in the empty space
 //!   below the footer. If the page then grows (another tab of wares, say),
 //!   that's no longer the bottom, so it hides again.
 //!
 //! The stacked layout (narrow screens) hides it altogether: see the 960px
-//! block in main.css.
+//! block in main.css. The homepage doesn't have it.
 
 use super::glyphs::ArrowUpIcon;
 use crate::browser;
@@ -30,15 +32,14 @@ pub fn BackToTop() -> impl IntoView {
         let Some(button) = button.get_untracked() else {
             return;
         };
-        // The hero is the first thing on the page; "past" means none of it is
-        // left on screen.
-        let past_hero = browser::rect(".hero").is_some_and(|hero| hero.bottom() < 1.0);
+        // "Past" means none of the first screen is left on screen.
+        let past_first_screen = browser::past_first_screen();
         // The button keeps its place while hidden, so its left edge shows how
         // much room the corner has beside the page content (the shop's width).
         let room = browser::rect(".market").is_some_and(|content| {
             button.get_bounding_client_rect().left() - CLEARANCE >= content.right()
         });
-        let show = past_hero && (room || browser::at_bottom(BOTTOM_SLACK));
+        let show = past_first_screen && (room || browser::at_bottom(BOTTOM_SLACK));
         if shown.get_untracked() != show {
             shown.set(show);
         }
@@ -65,7 +66,7 @@ pub fn BackToTop() -> impl IntoView {
             aria-label="Back to top"
             title="Back to top"
             on:click=move |_| {
-                browser::scroll_to("top");
+                browser::scroll_to_top();
                 browser::focus_quietly("top");
             }
         >

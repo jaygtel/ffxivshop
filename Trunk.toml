@@ -1,7 +1,9 @@
 [build]
 target = "index.html"
 dist = "dist"
-# Relative links, so the built site works from any folder or domain.
+# Relative links to the site's files, so it works on any domain. Its pages
+# have their own addresses (/ and /shop), so it's served from the top of the
+# domain, not from a folder.
 public_url = "./"
 
 [serve]

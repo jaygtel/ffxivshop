@@ -19,7 +19,7 @@ since = 2026                             # the notice becomes "2026–2027" and 
 
 [shop]
 name = "Aether & Allure"
-# The hero at the top of the page shows the name, title, tagline, status and
+# The hero on the homepage shows the name, title, tagline, status and
 # status note as written here. Its opening animation is drawn for the name
 # "Aether & Allure" (with another name the hero shows without it), and the
 # link preview image, og-card.png, has the name, title and tagline drawn in.
@@ -89,9 +89,9 @@ email = "${SHOP_EMAIL:-commissions@example.com}"
 
 # ─── Categories ──────────────────────────────────────────────────────────────
 # The tabs above the item list, in this order. `key` is what items use and
-# what appears in links such as yoursite/#housing. `glyph` is the picture shown
-# when an item has no icon: sword, shield, armor, ring, tool, potion, food,
-# house, gem or crate.
+# what appears in links such as yoursite/shop#housing. `glyph` is the
+# picture shown when an item has no icon: sword, shield, armor, ring, tool,
+# potion, food, house, gem or crate.
 
 [[category]]
 key = "arms"

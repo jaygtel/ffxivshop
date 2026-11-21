@@ -1,9 +1,10 @@
 /* The hero's opening, as on the coming-soon page, about six seconds: the shop's name is written in aether fire at
    the centre of the screen, glides up into its place while the words around it fade in, then the crystal appears
    and the gold border draws itself. Any click, tap, key or scroll, or turning the phone, skips to the finished hero.
-   It plays only with JavaScript and when the visitor has not asked for reduced motion, and only when the page opens
-   at the top (not at a link such as #housing); otherwise the hero shows finished.
-   The shop draws its hero once its WebAssembly has loaded, so this waits for it. The letter outlines are the name's
+   It plays only with JavaScript and when the visitor has not asked for reduced motion, and only when the site opens
+   at the homepage, at the top (not at another page, or at a link with a #); otherwise the hero shows finished,
+   as it does when someone comes back to the homepage from another page.
+   The site draws its hero once its WebAssembly has loaded, so this waits for it. The letter outlines are the name's
    own: Cinzel (SemiBold) and Cormorant Garamond Italic, SIL Open Font License 1.1. */
 (function () {
   var root = document.documentElement;
@@ -11,7 +12,7 @@
     if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !('animate' in root) ||
         !window.requestAnimationFrame || !window.MutationObserver) return;
   } catch (e) { return; }
-  if (document.getElementById('title') || location.hash) return;
+  if (document.getElementById('title') || location.hash || !/^\/(index\.html)?$/.test(location.pathname)) return;
   root.classList.add('intro');
 
   var watch = new MutationObserver(function () { if (document.getElementById('title')) { watch.disconnect(); start(); } });

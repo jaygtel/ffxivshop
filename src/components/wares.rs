@@ -14,6 +14,7 @@ use crate::model::{Shop, Soon, gil, icon_url};
 use crate::order::Order;
 use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::hooks::use_location;
 use std::cmp::Reverse;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -77,10 +78,22 @@ pub fn Wares(shop: &'static Shop, order: Order) -> impl IntoView {
         }
     };
 
-    // "" means All. The tab follows the address, so #housing links work.
+    // "" means All. The tab follows the address, so /shop#housing links work:
+    // when the part after # changes (Back and Forward, say), and whenever the
+    // site moves to another address, such as the navigation's Shop link,
+    // which has no # (and the router changes it without a hashchange).
     let tab = RwSignal::new(known(browser::hash()));
     let listener = window_event_listener(ev::hashchange, move |_| tab.set(known(browser::hash())));
     on_cleanup(move || listener.remove());
+    let location = use_location();
+    Effect::new(move |_| {
+        location.pathname.track();
+        location.hash.track();
+        let now = known(browser::hash());
+        if tab.with_untracked(|t| *t != now) {
+            tab.set(now);
+        }
+    });
 
     let query = RwSignal::new(String::new());
     let sort = RwSignal::new(SortBy::Featured);

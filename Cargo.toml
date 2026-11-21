@@ -12,6 +12,9 @@ publish = false
 
 [dependencies]
 leptos = { version = "0.8", features = ["csr"] }
+# The pages' addresses (/ and /shop), and moving between them without
+# reloading the site.
+leptos_router = "0.8"
 serde = { version = "1", features = ["derive"] }
 toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
 wasm-bindgen = "0.2"
@@ -37,6 +40,7 @@ web-sys = { version = "0.3", features = [
   "ScrollBehavior",
   "ScrollIntoViewOptions",
   "ScrollLogicalPosition",
+  "ScrollToOptions",
   "Storage",
   "Window",
 ] }

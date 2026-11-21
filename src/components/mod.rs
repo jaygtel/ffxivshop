@@ -7,6 +7,7 @@ mod footer;
 mod glyphs;
 mod hero;
 mod order_slip;
+mod site_nav;
 mod sky;
 mod wares;
 
@@ -17,5 +18,6 @@ pub use find_me::FindMe;
 pub use footer::Footer;
 pub use hero::Hero;
 pub use order_slip::OrderSlip;
+pub use site_nav::{MenuOpen, SiteNav};
 pub use sky::AetherSky;
 pub use wares::Wares;
