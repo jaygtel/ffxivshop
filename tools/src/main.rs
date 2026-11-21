@@ -1,8 +1,9 @@
-//! shop-tools: looks up FFXIV item details for shop.toml.
+//! shop-tools: looks up FFXIV item details and prices for shop.toml.
 //!
 //!     cargo run -p shop-tools -- find courtly lover's rapier
 //!     cargo run -p shop-tools -- fill
 //!     cargo run -p shop-tools -- fill path/to/shop.toml
+//!     cargo run -p shop-tools -- prices
 //!
 //! `find` prints matching items with a ready-to-paste `[[item]]` entry.
 //! `fill` completes every `[[item]]` in shop.toml that has a `name`: it adds
@@ -13,6 +14,12 @@
 //! Add `--refresh` after a game patch to download fresh data. Data comes from
 //! FFXIV Teamcraft's game-data files and Asvel's Eorzea Database ID list, and
 //! is cached in shop-tools-cache inside the Cargo target directory.
+//!
+//! `prices` sets each item's `price` and `price_own_mats` from the cheapest
+//! listing on your world's market board, following [prices] in shop.toml. It
+//! asks Universalis every time it runs and keeps nothing (see prices.rs).
+
+mod prices;
 
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -29,9 +36,10 @@ const USAGE: &str = "\
 Usage:
   cargo run -p shop-tools -- find <item name words>
   cargo run -p shop-tools -- fill [path/to/shop.toml]
+  cargo run -p shop-tools -- prices [path/to/shop.toml]
 
 Options:
-  --refresh   download fresh item data (do this after a game patch)";
+  --refresh   download fresh item data for find and fill (do this after a game patch)";
 
 fn main() {
     let mut refresh = false;
@@ -57,6 +65,13 @@ fn main() {
                 .map(PathBuf::from)
                 .unwrap_or_else(default_shop_toml);
             Db::load(refresh).and_then(|db| fill(&db, &path))
+        }
+        Some("prices") => {
+            let path = args
+                .get(1)
+                .map(PathBuf::from)
+                .unwrap_or_else(default_shop_toml);
+            prices::run(&path)
         }
         _ => Err(USAGE.to_string()),
     };

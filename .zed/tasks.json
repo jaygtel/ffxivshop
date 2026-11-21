@@ -37,6 +37,13 @@
     "save": "all"
   },
   {
+    "label": "shop-tools: set prices from the market board",
+    // Sets each item's price from the cheapest listing on your world's
+    // market board, as [prices] in shop.toml says.
+    "command": "cargo run -q -p shop-tools -- prices",
+    "save": "all"
+  },
+  {
     "label": "shop-tools: find selected item",
     // Select an item name in the editor, then run this.
     "command": "cargo",
