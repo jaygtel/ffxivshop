@@ -40,8 +40,8 @@ How to edit the shop, work on the site and run it on your server is in the
 
 ### Reference
 
-- [Site design][]: the look, fonts, logo, icons, hero and intro
-- [Assets][]: where the page's files live, and where the build puts them
+- [Site design][]: the look, fonts, logo, icons, hero and intro, the pages and the navigation
+- [Assets][]: where the site's files live, and where the build puts them
 - [Project layout][]: what each file and folder is for
 - [License and credits][]: which licence covers the code, the art and branding, the fonts and the game material
 

@@ -45,6 +45,33 @@ pub fn set_title(title: &str) {
     }
 }
 
+/// Sets the page's canonical address (`<link rel="canonical">`), or takes it
+/// away with None.
+pub fn set_canonical(address: Option<&str>) {
+    let Some(document) = web_sys::window().and_then(|w| w.document()) else {
+        return;
+    };
+    let existing = document
+        .query_selector("link[rel=canonical]")
+        .ok()
+        .flatten();
+    match (existing, address) {
+        (Some(link), Some(address)) => {
+            let _ = link.set_attribute("href", address);
+        }
+        (Some(link), None) => link.remove(),
+        (None, Some(address)) => {
+            let (Ok(link), Some(head)) = (document.create_element("link"), document.head()) else {
+                return;
+            };
+            let _ = link.set_attribute("rel", "canonical");
+            let _ = link.set_attribute("href", address);
+            let _ = head.append_child(&link);
+        }
+        (None, None) => {}
+    }
+}
+
 /// Reads something saved in this browser.
 pub fn load(key: &str) -> Option<String> {
     web_sys::window()?
@@ -177,6 +204,69 @@ pub fn scroll_to(id: &str) {
     element.scroll_into_view_with_scroll_into_view_options(&options);
 }
 
+/// Scrolls the page back to the top: smoothly, or instantly if the visitor
+/// prefers reduced motion.
+pub fn scroll_to_top() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let options = web_sys::ScrollToOptions::new();
+    options.set_top(0.0);
+    options.set_behavior(if prefers_reduced_motion() {
+        web_sys::ScrollBehavior::Instant
+    } else {
+        web_sys::ScrollBehavior::Smooth
+    });
+    window.scroll_to_with_scroll_to_options(&options);
+}
+
+/// Takes the page straight back to the top, without gliding.
+pub fn jump_to_top() {
+    if let Some(window) = web_sys::window() {
+        window.scroll_to_with_x_and_y(0.0, 0.0);
+    }
+}
+
+/// The window's width in CSS pixels.
+pub fn window_width() -> f64 {
+    web_sys::window()
+        .and_then(|w| w.inner_width().ok())
+        .and_then(|w| w.as_f64())
+        .unwrap_or(0.0)
+}
+
+/// Adds a class to the page's root (`<html>`) or takes it off, for styles
+/// that reach the whole page, such as stopping it scrolling.
+pub fn set_root_class(class: &str, on: bool) {
+    let Some(root) = web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.document_element())
+    else {
+        return;
+    };
+    let classes = root.class_list();
+    let _ = if on {
+        classes.add_1(class)
+    } else {
+        classes.remove_1(class)
+    };
+}
+
+/// Moves keyboard focus to the first element matching `selector`, without
+/// scrolling to it.
+pub fn focus_first(selector: &str) {
+    let Some(element) = web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.query_selector(selector).ok().flatten())
+        .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
+    else {
+        return;
+    };
+    let options = web_sys::FocusOptions::new();
+    options.set_prevent_scroll(true);
+    let _ = element.focus_with_options(&options);
+}
+
 /// Moves keyboard focus to an element without scrolling to it, so the next
 /// Tab carries on from there. The element needs a tabindex to take focus.
 pub fn focus_quietly(id: &str) {
@@ -190,6 +280,20 @@ pub fn focus_quietly(id: &str) {
     let options = web_sys::FocusOptions::new();
     options.set_prevent_scroll(true);
     let _ = element.focus_with_options(&options);
+}
+
+/// Whether the page is scrolled down by at least the window's height, so
+/// none of what showed when it opened is still on screen.
+pub fn past_first_screen() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+    let window_height = window
+        .inner_height()
+        .ok()
+        .and_then(|h| h.as_f64())
+        .unwrap_or(0.0);
+    window_height > 0.0 && window.scroll_y().unwrap_or(0.0) > window_height - 1.0
 }
 
 /// Whether the page is scrolled all the way down, give or take `slack` pixels.

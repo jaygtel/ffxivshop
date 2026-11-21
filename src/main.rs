@@ -6,6 +6,7 @@ mod browser;
 mod components;
 mod model;
 mod order;
+mod pages;
 // Fills in shop.toml's ${SHOP_…} values. build.rs uses it; it's compiled here
 // only so its tests run with `cargo test`.
 #[cfg(test)]
