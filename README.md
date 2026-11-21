@@ -20,7 +20,7 @@ How to edit the shop, work on the site and run it on your server is in the
 ### The shop
 
 - [Editing the shop][]: what each part of [`shop.toml`](shop.toml) controls
-- [Adding items][]: looking items up with shop-tools
+- [Adding items][]: looking items up, and setting prices from the market board, with shop-tools
 - [Settings and secrets][]: `.env`, your Discord name and email, and secrets
 - [Item links and icons][]: Eorzea Database links, tooltips and icons
 - [Visitor orders][]: how a visitor's order is kept in their browser

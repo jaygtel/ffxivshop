@@ -7,6 +7,9 @@
 #  Adding items: write the in-game name, category, price and ready time,
 #  then run   cargo run -p shop-tools -- fill
 #  to look up the Eorzea Database link, icon, item level and jobs for you.
+#  Then       cargo run -p shop-tools -- prices
+#  sets the prices from the market board for you, if you'd like it to:
+#  see [prices] below.
 #
 #  Your Discord name and email come from .env rather than this file: see
 #  [contact] below.
@@ -123,11 +126,26 @@ key = "housing"
 label = "Housing"
 glyph = "house"
 
+# ─── Prices ──────────────────────────────────────────────────────────────────
+# Run   cargo run -p shop-tools -- prices
+# to set every item's price from the market board on your world (`world`
+# under [location]), using market data from Universalis. For each item it
+# finds the cheapest listing (HQ listings for items with hq = true), takes
+# `undercut` percent off, and rounds up to a whole gil. The price when the
+# buyer brings the materials is then `own_mats` percent less, rounded up too.
+# Items with `auto_price` set to false, and items nobody is selling, keep
+# the prices written here. Rebuild the site afterwards, as after any edit.
+
+[prices]
+undercut = 0.5                           # percent below the cheapest listing
+own_mats = 2                             # percent off that price for buyers who bring the materials
+
 # ─── Items ───────────────────────────────────────────────────────────────────
 # name            the in-game name
 # category        one of the keys above
 # price           in gil; leave it out to show "Ask"
 # price_own_mats  optional price if the buyer brings the materials
+# auto_price      false keeps the prices you write here when shop-tools sets prices
 # per             optional, e.g. "each" or "stack of 99"
 # ready           how long until it's ready: "now", "6h", "2d", "1d 12h", "1w"
 # hq              true if you craft it in high quality
@@ -404,6 +422,7 @@ name = "Semicircular Outdoor Stage"
 category = "housing"
 ready = "1w"
 note = "Price depends on materials; ask me."
+auto_price = false
 id = 51271
 lodestone = "cc77449246c"
 icon = 53746

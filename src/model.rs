@@ -47,6 +47,8 @@ pub struct Shop {
     pub shop: ShopInfo,
     pub location: Location,
     pub contact: Contact,
+    #[serde(default)]
+    pub prices: Option<Prices>,
     #[serde(default, rename = "category")]
     pub categories: Vec<Category>,
     #[serde(default, rename = "item")]
@@ -158,6 +160,17 @@ pub struct Link {
     pub url: String,
 }
 
+/// How `cargo run -p shop-tools -- prices` sets prices from the market board.
+/// The page doesn't use these; they're read here so a mistake stops the build.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Prices {
+    /// Percent below the cheapest listing, e.g. 0.5.
+    pub undercut: f64,
+    /// Percent off that price for buyers who bring the materials, e.g. 2.
+    pub own_mats: f64,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Category {
@@ -181,6 +194,11 @@ pub struct Item {
     /// Price if the buyer brings the materials.
     #[serde(default)]
     pub price_own_mats: Option<u64>,
+    /// false keeps the prices written here when shop-tools sets prices from
+    /// the market board. Only shop-tools reads it.
+    #[serde(default = "yes")]
+    #[allow(dead_code)]
+    pub auto_price: bool,
     /// What the price buys, e.g. "each" or "stack of 99".
     #[serde(default)]
     pub per: Option<String>,
@@ -585,6 +603,16 @@ impl Shop {
             out.push("[location] wards are numbered from 1".into());
         }
 
+        if let Some(prices) = &self.prices {
+            for (key, percent) in [("undercut", prices.undercut), ("own_mats", prices.own_mats)] {
+                if !(0.0..100.0).contains(&percent) {
+                    out.push(format!(
+                        "[prices] {key} should be a percentage from 0 to under 100 (it's {percent})"
+                    ));
+                }
+            }
+        }
+
         if let Some(url) = &self.contact.discord_server
             && !is_web_url(url)
         {
@@ -860,6 +888,23 @@ mod tests {
         let typo = base.replacen("price = ", "prcie = ", 1);
         let err = Shop::from_toml(&typo).unwrap_err();
         assert!(err.contains("prcie"), "{err}");
+    }
+
+    #[test]
+    fn price_settings_are_checked() {
+        let base = include_str!("../shop.toml");
+        let shop = Shop::from_toml(base).unwrap();
+        assert!(shop.prices.is_some());
+        assert!(shop.items.iter().any(|item| !item.auto_price));
+        assert!(shop.items.iter().any(|item| item.auto_price));
+
+        let too_much = base.replacen("own_mats = 2 ", "own_mats = 100 ", 1);
+        let err = Shop::from_toml(&too_much).unwrap_err();
+        assert!(err.contains("[prices] own_mats"), "{err}");
+
+        let typo = base.replacen("undercut = ", "undercutt = ", 1);
+        let err = Shop::from_toml(&typo).unwrap_err();
+        assert!(err.contains("undercutt"), "{err}");
     }
 
     #[test]
