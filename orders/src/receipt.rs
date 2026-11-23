@@ -175,6 +175,15 @@ fn esc(text: &str) -> String {
     out
 }
 
+/// `html` with its last two words joined by a no-break space, so a narrow
+/// screen never leaves the last word on a line of its own.
+fn last_words_together(html: &str) -> String {
+    match html.rfind(' ') {
+        Some(at) => format!("{}&nbsp;{}", &html[..at], &html[at + 1..]),
+        None => html.to_string(),
+    }
+}
+
 /// The gil coin, drawn in CSS: a gold face in a deeper gold rim, centred
 /// on the figures beside it (the space under it lifts it from the middle of
 /// the small letters to the middle of the figures). Outlook on Windows
@@ -527,7 +536,8 @@ fn footer(shop: &Shop) -> String {
             esc(&label)
         )
     };
-    // Left-aligned, starting where the slip's frame starts.
+    // Left-aligned, starting where the slip's frame starts. On phones it
+    // starts where the slip's text starts (see `.foot` in the styles).
     let style = format!("{}text-align:left;", body_text(13, 20, MUTED));
     format!(
         "<div style=\"margin:0 0 8px;{style}\">{name}{link}</div>\
@@ -540,9 +550,9 @@ fn footer(shop: &Shop) -> String {
         } else {
             &label
         }),
-        if_not = IF_NOT_YOU,
+        if_not = last_words_together(IF_NOT_YOU),
         copyright = esc(&copyright(shop)),
-        square_enix = esc(SQUARE_ENIX),
+        square_enix = last_words_together(&esc(SQUARE_ENIX)),
     )
 }
 
@@ -563,6 +573,10 @@ fn html(
     );
     // Separate from the fonts: an email program that throws away a style
     // block it doesn't like keeps the other.
+    //
+    // On phones the page's edge comes in to 6px, to give the slip more room.
+    // The footer has no frame around it, so there it moves in by the frame's
+    // width on both sides, lining up with the text inside the slip.
     let styles = format!(
         ":root{{color-scheme:dark;supported-color-schemes:dark;}}\
          body{{margin:0!important;padding:0!important;width:100%!important;background-color:{SKY};}}\
@@ -571,6 +585,7 @@ fn html(
          a{{color:{AETHER};}}\
          @media screen and (max-width:540px){{\
          .outer{{padding:18px 6px 26px!important;}}\
+         .foot{{padding-left:{CORNER}px!important;padding-right:{CORNER}px!important;}}\
          .col{{display:block!important;max-width:100%!important;}}\
          .col-2{{padding-top:18px!important;}}\
          .each{{display:none!important;}}\
@@ -604,7 +619,7 @@ fn html(
 <tr><td align=\"center\" class=\"name\" style=\"font-family:{DISPLAY};font-size:26px;line-height:32px;font-weight:600;letter-spacing:1.5px;color:{GOLD};mso-line-height-rule:exactly;\">{shop_name}</td></tr>\n\
 <tr><td align=\"center\" class=\"divider\" style=\"padding:12px 0 22px;\">{divider}</td></tr>\n\
 <tr><td>{slip}</td></tr>\n\
-<tr><td align=\"left\" style=\"padding:24px 0 0;text-align:left;\">{footer}</td></tr>\n\
+<tr><td align=\"left\" class=\"foot\" style=\"padding:24px 0 0;text-align:left;\">{footer}</td></tr>\n\
 </table>\n\
 <!--[if mso]></td></tr></table><![endif]-->\n\
 </td></tr>\n\
@@ -829,10 +844,22 @@ mod tests {
             assert!(html.contains(part), "missing {part:?}");
         }
         assert!(!html.contains("<b>please"));
-        // The footer is left-aligned, under the frame's left edge.
+        // The footer is left-aligned, under the frame's left edge, and on
+        // phones lines up with the text inside the slip.
         assert!(html.contains(
-            "<td align=\"left\" style=\"padding:24px 0 0;text-align:left;\"><div style=\"margin:0 0 8px;"
+            "<td align=\"left\" class=\"foot\" style=\"padding:24px 0 0;text-align:left;\"><div style=\"margin:0 0 8px;"
         ));
+        let phones = html
+            .split("@media screen and (max-width:540px){")
+            .nth(1)
+            .and_then(|rest| rest.split("</style>").next())
+            .unwrap();
+        assert!(
+            phones.contains(".foot{padding-left:24px!important;padding-right:24px!important;}")
+        );
+        // Its paragraphs never end with one word alone on a line.
+        assert!(html.contains("you can ignore this&nbsp;email.</div>"));
+        assert!(html.contains("All Rights&nbsp;Reserved.</div>"));
         assert!(!html.contains(".com//assets"));
         // Gmail cuts off emails over about 102 KB.
         assert!(html.len() < 60_000, "{} bytes", html.len());
@@ -888,6 +915,15 @@ mod tests {
         assert_eq!(materials_words(&no_option), "I will use my own materials.");
         let html = receipt(false, "", &MIXED).html;
         assert!(!html.contains("You must bring all the materials"));
+    }
+
+    #[test]
+    fn the_last_two_words_stay_together() {
+        assert_eq!(
+            last_words_together("ignore this email."),
+            "ignore this&nbsp;email."
+        );
+        assert_eq!(last_words_together("Reserved."), "Reserved.");
     }
 
     #[test]
