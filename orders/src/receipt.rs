@@ -527,7 +527,8 @@ fn footer(shop: &Shop) -> String {
             esc(&label)
         )
     };
-    let style = body_text(13, 20, MUTED);
+    // Left-aligned, starting where the slip's frame starts.
+    let style = format!("{}text-align:left;", body_text(13, 20, MUTED));
     format!(
         "<div style=\"margin:0 0 8px;{style}\">{name}{link}</div>\
          <div style=\"margin:0 0 8px;{style}\">{why} {on}. {if_not}</div>\
@@ -603,7 +604,7 @@ fn html(
 <tr><td align=\"center\" class=\"name\" style=\"font-family:{DISPLAY};font-size:26px;line-height:32px;font-weight:600;letter-spacing:1.5px;color:{GOLD};mso-line-height-rule:exactly;\">{shop_name}</td></tr>\n\
 <tr><td align=\"center\" class=\"divider\" style=\"padding:12px 0 22px;\">{divider}</td></tr>\n\
 <tr><td>{slip}</td></tr>\n\
-<tr><td align=\"center\" style=\"padding:24px 8px 0;\">{footer}</td></tr>\n\
+<tr><td align=\"left\" style=\"padding:24px 0 0;text-align:left;\">{footer}</td></tr>\n\
 </table>\n\
 <!--[if mso]></td></tr></table><![endif]-->\n\
 </td></tr>\n\
@@ -828,6 +829,10 @@ mod tests {
             assert!(html.contains(part), "missing {part:?}");
         }
         assert!(!html.contains("<b>please"));
+        // The footer is left-aligned, under the frame's left edge.
+        assert!(html.contains(
+            "<td align=\"left\" style=\"padding:24px 0 0;text-align:left;\"><div style=\"margin:0 0 8px;"
+        ));
         assert!(!html.contains(".com//assets"));
         // Gmail cuts off emails over about 102 KB.
         assert!(html.len() < 60_000, "{} bytes", html.len());
