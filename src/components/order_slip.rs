@@ -13,6 +13,10 @@ use std::time::Duration;
 /// How long the panel waits for the orders service to answer.
 const SEND_WAIT_MS: i32 = 30_000;
 
+/// How long the note that an order was sent stays, before the panel goes
+/// back to the empty order.
+const SENT_SHOWN: Duration = Duration::from_secs(10);
+
 /// An order that has just been emailed.
 #[derive(Clone)]
 struct Sent {
@@ -82,7 +86,24 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                     }),
                 )) => {
                     order.sent();
-                    sent.set(Some(Sent { number, email }));
+                    sent.set(Some(Sent {
+                        number: number.clone(),
+                        email,
+                    }));
+                    // Then back to the empty order, unless another order has
+                    // been sent since (or the panel has gone).
+                    set_timeout(
+                        move || {
+                            let still_showing = sent
+                                .try_get_untracked()
+                                .flatten()
+                                .is_some_and(|shown| shown.number == number);
+                            if still_showing {
+                                sent.set(None);
+                            }
+                        },
+                        SENT_SHOWN,
+                    );
                 }
                 Some((
                     _,
