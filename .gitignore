@@ -10,3 +10,4 @@
 
 # Server-specific Docker Compose changes
 compose.override.yaml
+.Trash-501/
