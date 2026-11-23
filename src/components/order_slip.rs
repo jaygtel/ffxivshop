@@ -118,6 +118,14 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                         />
                         "I'll bring the materials (uses the lower prices)"
                     </label>
+                    // The rule for bringing materials, while the box is ticked.
+                    // The copied order says the same (MATS_* in order.rs).
+                    <p
+                        class="mats-rule"
+                        hidden=move || !(order.own_mats.get() && order.mats_option())
+                    >
+                        "You must bring all the materials, not just some. If you cannot, I will use my own and charge the standard price."
+                    </p>
 
                     <div class="field">
                         <label for="order-note">"Anything else?"</label>

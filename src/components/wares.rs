@@ -356,16 +356,30 @@ fn WareRow(shop: &'static Shop, order: Order, index: usize, hidden: Signal<bool>
                     }
                     None => view! { <p class="price ask">"Ask"</p> }.into_any(),
                 }} {item.per.clone().map(|per| view! { <p class="per">{per}</p> })}
-                {item
-                    .price_own_mats
-                    .map(|p| {
-                        view! {
-                            <p class="mats" title="Price if you bring the materials">
-                                "Your mats: "
-                                {gil(p)}
-                            </p>
-                        }
-                    })}
+                {match (item.price_own_mats, item.own_mats_ask) {
+                    (Some(p), _) => {
+                        Some(
+                            view! {
+                                <p class="mats" title="Price if you bring the materials">
+                                    "Your mats: "
+                                    {gil(p)}
+                                </p>
+                            }
+                                .into_any(),
+                        )
+                    }
+                    (None, true) => {
+                        Some(
+                            view! {
+                                <p class="mats" title="Price if you bring the materials">
+                                    "Your mats: Ask"
+                                </p>
+                            }
+                                .into_any(),
+                        )
+                    }
+                    (None, false) => None,
+                }}
             </div>
             <div class="ware-act">
                 <button

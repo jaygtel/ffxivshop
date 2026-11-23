@@ -3,6 +3,7 @@ use crate::components::{AetherSky, MenuOpen, SiteNav};
 use crate::model::Shop;
 use crate::order::Order;
 use crate::pages::{self, HomePage, ShopPage};
+use crate::prices::{self, Prices};
 use leptos::prelude::*;
 use leptos_router::components::{Redirect, Route, Router, Routes};
 use leptos_router::hooks::use_location;
@@ -12,10 +13,14 @@ use leptos_router::{NavigateOptions, path};
 /// .env by build.rs, which has already checked it.
 const SHOP_TOML: &str = include_str!(concat!(env!("OUT_DIR"), "/shop.toml"));
 
+/// `prices`: the market prices from prices.json, if the site could load them.
 #[component]
-pub fn App() -> impl IntoView {
+pub fn App(prices: Option<Prices>) -> impl IntoView {
     match Shop::from_toml(SHOP_TOML) {
-        Ok(shop) => {
+        Ok(mut shop) => {
+            if let Some(prices) = &prices {
+                prices::apply(&mut shop, prices);
+            }
             // The shop's details never change while the site is open, so they
             // live for the whole visit and every page can borrow them.
             let shop: &'static Shop = Box::leak(Box::new(shop));

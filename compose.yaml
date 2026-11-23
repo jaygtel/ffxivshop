@@ -1,11 +1,12 @@
-# Runs the site on your server, behind your Traefik.
+# Runs the site on your server, behind your Traefik, and the prices service
+# that keeps its market prices up to date.
 #
 #   docker compose up -d --build
 #   cp deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
 #
 # After pulling changes from GitHub, run the same `up` command again.
 #
-# No ports are published on the server. The container joins the existing
+# No ports are published on the server. The site joins the existing
 # traefik_proxy network, where Traefik reaches it by name through Docker's
 # DNS: http://aether-allure-site:8080
 
@@ -28,6 +29,9 @@ services:
     restart: unless-stopped
     networks:
       - traefik_proxy
+    # prices.json from the prices service, which nginx serves (read-only).
+    volumes:
+      - prices:/srv/prices:ro
     # nginx runs as an unprivileged user on a read-only filesystem.
     read_only: true
     tmpfs:
@@ -48,8 +52,44 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Works out the market prices when it starts (so after every update), then
+  # every 7 days, and writes them to prices.json for the site. Change 7 to 1
+  # for daily prices. If a run fails, it tries again an hour later, and the
+  # site keeps the last prices. See what it did: docker compose logs prices
+  prices:
+    build:
+      context: .
+      target: prices
+    image: aether-allure-prices:latest
+    container_name: aether-allure-prices
+    command: ["prices", "--refresh", "--json", "/data/prices.json", "--every-days", "7", "/app/shop.toml"]
+    restart: unless-stopped
+    # Passes on the stop signal, so it stops straight away rather than after
+    # Docker's 10 seconds.
+    init: true
+    # Only reaches out (to Universalis and GitHub), so it stays off
+    # traefik_proxy, on this project's own network.
+    volumes:
+      - prices:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   # Traefik's existing network. Compose joins it but never creates or removes it.
   traefik_proxy:
     name: traefik_proxy
     external: true
+
+volumes:
+  # prices.json: the prices service writes it, the site reads it.
+  prices:

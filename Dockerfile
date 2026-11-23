@@ -1,12 +1,15 @@
 # Aether & Allure: one Dockerfile for development and for the server.
 #
-#   tools   Rust (from rust-toolchain.toml), Trunk, wasm-bindgen and wasm-opt
-#   dev     the dev container Zed opens: tools + git, leptosfmt and a user account
-#   build   compiles the site with `trunk build --release`
-#   site    what runs on the server: nginx serving the built site (behind Traefik)
+#   tools        Rust (from rust-toolchain.toml), Trunk, wasm-bindgen and wasm-opt
+#   dev          the dev container Zed opens: tools + git, leptosfmt and a user account
+#   build        compiles the site with `trunk build --release`
+#   site         what runs on the server: nginx serving the built site (behind Traefik)
+#   shop-tools   compiles shop-tools
+#   prices       what also runs on the server: shop-tools updating the market
+#                prices in prices.json every week, for the site to read
 #
-# On the server, `docker compose up -d --build` builds and runs `site`
-# (see compose.yaml). Zed builds `dev` (see .devcontainer/devcontainer.json).
+# On the server, `docker compose up -d --build` builds and runs `site` and
+# `prices` (see compose.yaml). Zed builds `dev` (see .devcontainer/devcontainer.json).
 # Requires BuildKit, which Docker uses by default.
 #
 # Nothing secret is needed to build, and .dockerignore keeps .env out of the
@@ -14,12 +17,15 @@
 
 # Only bootstraps rustup; the toolchain that's used comes from
 # rust-toolchain.toml. Keep the two equal so Rust isn't downloaded twice.
-# Debian trixie is required: Trunk's prebuilt binary needs glibc 2.39 or newer.
 ARG RUST_VERSION=1.97.0
 ARG NGINX_VERSION=1.30.6
+# The Debian release under Rust and under the prices image, kept the same so
+# shop-tools runs where it was built. It must be trixie or newer: Trunk's
+# prebuilt binary needs glibc 2.39 or newer.
+ARG DEBIAN_RELEASE=trixie
 
 # =============================================================================
-FROM rust:${RUST_VERSION}-slim-trixie AS tools
+FROM rust:${RUST_VERSION}-slim-${DEBIAN_RELEASE} AS tools
 
 # Pinned tool versions and the SHA-256 of each download (the upstream release
 # checksums). wasm-bindgen must match the version in Cargo.lock: after
@@ -197,3 +203,44 @@ FROM nginx/nginx-unprivileged:${NGINX_VERSION}-alpine-slim AS site
 
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# =============================================================================
+# Compiles shop-tools for the prices image, with the same caches as `build`.
+FROM tools AS shop-tools
+
+WORKDIR /app
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --locked -p shop-tools \
+    && cp target/release/shop-tools /usr/local/bin/shop-tools
+
+# =============================================================================
+# What also runs on the server: shop-tools working out the market prices
+# when the site starts or is updated, then every week (the command is in
+# compose.yaml), and writing them to /data/prices.json. The site reads that
+# file from the same volume (see deploy/nginx.conf). It runs as an
+# unprivileged user and only reaches out to Universalis and GitHub.
+FROM debian:${DEBIAN_RELEASE}-slim AS prices
+
+# CA certificates, so shop-tools can check the sites it talks to.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# /data is where the prices go. Its owner carries over to the volume
+# mounted there, so shop-tools can write to it.
+RUN set -eux; \
+    groupadd --system --gid 10001 prices; \
+    useradd --system --uid 10001 --gid prices --no-create-home --shell /usr/sbin/nologin prices; \
+    mkdir /data; \
+    chown prices:prices /data
+
+COPY --from=shop-tools /usr/local/bin/shop-tools /usr/local/bin/shop-tools
+COPY shop.toml /app/shop.toml
+
+# shop-tools keeps Teamcraft's recipes and item names in the Cargo target
+# directory; here that's /tmp (a tmpfs in compose.yaml).
+ENV CARGO_TARGET_DIR=/tmp
+USER prices
+ENTRYPOINT ["shop-tools"]

@@ -16,6 +16,8 @@ leptos = { version = "0.8", features = ["csr"] }
 # reloading the site.
 leptos_router = "0.8"
 serde = { version = "1", features = ["derive"] }
+# Reads prices.json, the market prices the server writes (src/prices.rs).
+serde_json = "1"
 toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
@@ -37,6 +39,7 @@ web-sys = { version = "0.3", features = [
   "MediaQueryList",
   "Navigator",
   "ResizeObserver",
+  "Response",
   "ScrollBehavior",
   "ScrollIntoViewOptions",
   "ScrollLogicalPosition",

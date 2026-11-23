@@ -160,15 +160,13 @@ pub struct Link {
     pub url: String,
 }
 
-/// How `cargo run -p shop-tools -- prices` sets prices from the market board.
-/// The page doesn't use these; they're read here so a mistake stops the build.
+/// How shop-tools sets prices from the market board (`prices`). The page
+/// doesn't use this; it's read here so a mistake stops the build.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Prices {
     /// Percent below the cheapest listing, e.g. 0.5.
     pub undercut: f64,
-    /// Percent off that price for buyers who bring the materials, e.g. 2.
-    pub own_mats: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -194,11 +192,23 @@ pub struct Item {
     /// Price if the buyer brings the materials.
     #[serde(default)]
     pub price_own_mats: Option<u64>,
-    /// false keeps the prices written here when shop-tools sets prices from
-    /// the market board. Only shop-tools reads it.
+    /// false keeps the prices written here: shop-tools leaves them alone, and
+    /// the site doesn't take market prices for it from prices.json.
     #[serde(default = "yes")]
-    #[allow(dead_code)]
     pub auto_price: bool,
+    /// The lowest price shop-tools may set. Only shop-tools reads it.
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub min_price: Option<u64>,
+    /// The lowest price with the buyer's own materials that shop-tools may
+    /// set. Only shop-tools reads it.
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub min_price_own_mats: Option<u64>,
+    /// The market prices (prices.json) say "Ask" for the price with the
+    /// buyer's own materials. Never in shop.toml: see src/prices.rs.
+    #[serde(skip)]
+    pub own_mats_ask: bool,
     /// What the price buys, e.g. "each" or "stack of 99".
     #[serde(default)]
     pub per: Option<String>,
@@ -603,14 +613,13 @@ impl Shop {
             out.push("[location] wards are numbered from 1".into());
         }
 
-        if let Some(prices) = &self.prices {
-            for (key, percent) in [("undercut", prices.undercut), ("own_mats", prices.own_mats)] {
-                if !(0.0..100.0).contains(&percent) {
-                    out.push(format!(
-                        "[prices] {key} should be a percentage from 0 to under 100 (it's {percent})"
-                    ));
-                }
-            }
+        if let Some(prices) = &self.prices
+            && !(0.0..100.0).contains(&prices.undercut)
+        {
+            out.push(format!(
+                "[prices] undercut should be a percentage from 0 to under 100 (it's {})",
+                prices.undercut
+            ));
         }
 
         if let Some(url) = &self.contact.discord_server
@@ -898,9 +907,23 @@ mod tests {
         assert!(shop.items.iter().any(|item| !item.auto_price));
         assert!(shop.items.iter().any(|item| item.auto_price));
 
-        let too_much = base.replacen("own_mats = 2 ", "own_mats = 100 ", 1);
+        let too_much = base.replacen("undercut = 0.5 ", "undercut = 100 ", 1);
         let err = Shop::from_toml(&too_much).unwrap_err();
-        assert!(err.contains("[prices] own_mats"), "{err}");
+        assert!(err.contains("[prices] undercut"), "{err}");
+
+        // The old 2% rule is gone: a leftover own_mats stops the build.
+        let old = base.replacen("[prices]\n", "[prices]\nown_mats = 2\n", 1);
+        let err = Shop::from_toml(&old).unwrap_err();
+        assert!(err.contains("own_mats"), "{err}");
+
+        let floors = base.replacen(
+            "auto_price = false\n",
+            "auto_price = false\nmin_price = 500_000\nmin_price_own_mats = 50_000\n",
+            1,
+        );
+        assert!(Shop::from_toml(&floors).is_ok());
+        let not_in_shop_toml = base.replacen("auto_price = false\n", "own_mats_ask = true\n", 1);
+        assert!(Shop::from_toml(&not_in_shop_toml).is_err());
 
         let typo = base.replacen("undercut = ", "undercutt = ", 1);
         let err = Shop::from_toml(&typo).unwrap_err();
