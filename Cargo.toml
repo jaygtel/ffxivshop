@@ -30,6 +30,7 @@ web-sys = { version = "0.3", features = [
   "DomRect",
   "Element",
   "FocusOptions",
+  "Headers",
   "History",
   "HtmlCanvasElement",
   "HtmlDocument",
@@ -38,6 +39,7 @@ web-sys = { version = "0.3", features = [
   "Location",
   "MediaQueryList",
   "Navigator",
+  "RequestInit",
   "ResizeObserver",
   "Response",
   "ScrollBehavior",
@@ -54,7 +56,7 @@ serde = { version = "1", features = ["derive"] }
 toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
 
 [workspace]
-members = ["tools"]
+members = ["tools", "orders"]
 
 [profile.release]
 opt-level = "z"

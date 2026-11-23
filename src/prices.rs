@@ -1,18 +1,22 @@
 //! Market prices from /prices.json, which the prices service on the server
 //! writes (shop-tools' `prices --json`, run weekly: see compose.yaml). The site
 //! reads the file when it opens, before it shows anything, and uses its prices
-//! in place of shop.toml's. If the file is missing, late or unreadable, the
-//! site keeps shop.toml's prices.
+//! in place of shop.toml's (src/main.rs loads it). If the file is missing,
+//! late or unreadable, the site keeps shop.toml's prices.
+//!
+//! The orders service (orders/) compiles this file too, and reads the same
+//! file, so the receipt it emails has the prices the order panel showed.
+//! Keep it free of browser-only code.
 
 use crate::model::Shop;
 use serde::Deserialize;
 
 /// Where the server serves the file (see deploy/nginx.conf).
-const ADDRESS: &str = "/prices.json";
+pub const ADDRESS: &str = "/prices.json";
 
 /// How long each step of loading the file may take before the site gives up
 /// on it and shows shop.toml's prices.
-const WAIT_MS: i32 = 3000;
+pub const WAIT_MS: i32 = 3000;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Prices {
@@ -49,6 +53,15 @@ pub fn parse(text: &str) -> Result<Prices, String> {
     serde_json::from_str(text).map_err(|e| e.to_string())
 }
 
+/// Reads the file. Ok(None) when the text isn't the prices file at all, such
+/// as the page `trunk serve` sends for a file it doesn't have.
+pub fn read(text: &str) -> Result<Option<Prices>, String> {
+    if !text.trim_start().starts_with('{') {
+        return Ok(None);
+    }
+    parse(text).map(Some)
+}
+
 /// Puts the market prices in place of shop.toml's, for the items shop-tools
 /// prices (not those with auto_price = false).
 pub fn apply(shop: &mut Shop, prices: &Prices) {
@@ -74,47 +87,6 @@ pub fn apply(shop: &mut Shop, prices: &Prices) {
             None => {}
         }
     }
-}
-
-/// Loads /prices.json. None if it's missing, late or unreadable.
-pub async fn fetch() -> Option<Prices> {
-    use wasm_bindgen::JsCast;
-
-    let window = web_sys::window()?;
-    let response = within(&window, window.fetch_with_str(ADDRESS)).await?;
-    let response: web_sys::Response = response.dyn_into().ok()?;
-    if !response.ok() {
-        return None;
-    }
-    let text = within(&window, response.text().ok()?).await?.as_string()?;
-    // Not the prices at all, such as the page `trunk serve` sends for a file
-    // it doesn't have.
-    if !text.trim_start().starts_with('{') {
-        return None;
-    }
-    match parse(&text) {
-        Ok(prices) => Some(prices),
-        Err(problem) => {
-            leptos::logging::warn!(
-                "{ADDRESS} isn't readable ({problem}); using shop.toml's prices"
-            );
-            None
-        }
-    }
-}
-
-/// Waits for `promise`, but no longer than WAIT_MS.
-async fn within(
-    window: &web_sys::Window,
-    promise: js_sys::Promise,
-) -> Option<wasm_bindgen::JsValue> {
-    let timer = js_sys::Promise::new(&mut |done, _| {
-        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&done, WAIT_MS);
-    });
-    let first = js_sys::Promise::race(&js_sys::Array::of2(&promise, &timer));
-    let value = wasm_bindgen_futures::JsFuture::from(first).await.ok()?;
-    // The timer finishes with nothing.
-    (!value.is_undefined()).then_some(value)
 }
 
 #[cfg(test)]
@@ -162,6 +134,9 @@ mod tests {
         assert_eq!(no_recipe.items[0].price_own_mats, None);
         // What `trunk serve` answers for a file it doesn't have.
         assert!(parse("<!DOCTYPE html><html></html>").is_err());
+        assert_eq!(read("<!DOCTYPE html><html></html>"), Ok(None));
+        assert_eq!(read(FROM_SHOP_TOOLS).unwrap().unwrap().items.len(), 3);
+        assert!(read(r#"{"items":"none"}"#).is_err());
         assert!(parse(r#"{"items":[{"id":1,"price":"lots"}]}"#).is_err());
     }
 

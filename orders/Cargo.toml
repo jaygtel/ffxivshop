@@ -1,0 +1,24 @@
+[package]
+name = "shop-orders"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Emails the orders sent from the shop's order panel, with a copy to the buyer, through Postmark."
+# The code only. The receipt it sends links to Aether & Allure artwork
+# (assets/img/email), which is all rights reserved: see NOTICE.md.
+license = "BSD-3-Clause"
+authors = ["Jason Telford"]
+publish = false
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+getrandom = "0.4"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "net", "rt", "signal", "time"] }
+toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
+
+[dev-dependencies]
+# Sends the service orders in its tests, without a network.
+tower = { version = "0.5", features = ["util"] }

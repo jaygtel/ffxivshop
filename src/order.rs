@@ -1,7 +1,10 @@
-//! The visitor's order: what they've picked, how many, and the messages they
-//! can copy to send you. It's saved in their browser so it survives a reload,
-//! and cleared once it has gone 12 hours without a change.
+//! The visitor's order: what they've picked, how many, their details, and the
+//! messages they can send you. It's saved in their browser so it survives a
+//! reload, and cleared once it has gone 12 hours without a change. The sums
+//! and checks behind it are in src/basket.rs, which the orders service
+//! shares.
 
+use crate::basket::{self, EmailOrder, Ordered, Totals};
 use crate::browser;
 use crate::model::{Ready, Shop, gil};
 use leptos::prelude::*;
@@ -15,10 +18,9 @@ const STORAGE_KEY: &str = "ffxiv-shop.order";
 const KEEP_COOKIE: &str = "ffxiv-shop.order-expires";
 
 /// In the copied order when the buyer will bring the materials: they must
-/// bring all of them. The /tell has to fit on one chat line, so it's shorter.
-/// The order panel says the same, under the tick (order_slip.rs).
-const MATS_TELL: &str =
-    "I will bring all the materials. If I cannot, I will pay the standard price.";
+/// bring all of them. It's in the buyer's words, as the message is theirs.
+/// The order panel says the same in the shop's words, under the tick
+/// (basket::MATS_RULE).
 const MATS_WRITTEN: &str = "I will bring all the materials. If I cannot bring them all, you will craft my order at the standard price, with your own materials. I know you will not take only some of the materials.";
 const KEEP_FOR_SECONDS: u32 = 12 * 60 * 60;
 
@@ -29,34 +31,13 @@ pub struct Order {
     lines: RwSignal<Vec<(usize, u32)>>,
     /// The buyer will bring the materials.
     pub own_mats: RwSignal<bool>,
-    /// The buyer's character, for out-of-game messages.
+    /// The buyer's character's first and last name.
     pub character: RwSignal<String>,
+    /// The buyer's world.
+    pub world: RwSignal<String>,
+    /// Where the copy of an emailed order goes.
+    pub email: RwSignal<String>,
     pub note: RwSignal<String>,
-}
-
-pub struct Totals {
-    /// What the items with a price come to.
-    pub gil: u64,
-    /// Lines with a price.
-    pub priced: usize,
-    /// Lines with no price yet ("Ask").
-    pub unpriced: usize,
-}
-
-impl Totals {
-    /// The total for a message: "12,000 gil", or "12,000 gil, plus the items
-    /// with no price yet". None when nothing has a price yet, because a total
-    /// of 0 gil would look free.
-    pub fn in_words(&self) -> Option<String> {
-        if self.priced == 0 {
-            return None;
-        }
-        let mut words = format!("{} gil", gil(self.gil));
-        if self.unpriced > 0 {
-            words.push_str(", plus the items with no price yet");
-        }
-        Some(words)
-    }
 }
 
 impl Order {
@@ -64,6 +45,8 @@ impl Order {
         let mut lines = Vec::new();
         let mut own_mats = false;
         let mut character = String::new();
+        let mut world = String::new();
+        let mut email = String::new();
         let mut note = String::new();
         for line in browser::load(STORAGE_KEY).unwrap_or_default().lines() {
             let Some((key, rest)) = line.split_once('\t') else {
@@ -72,6 +55,8 @@ impl Order {
             match key {
                 "mats" => own_mats = rest == "1",
                 "me" => character = rest.to_string(),
+                "world" => world = rest.to_string(),
+                "email" => email = rest.to_string(),
                 "note" => note = rest.to_string(),
                 qty => {
                     // Items are remembered by name, so editing shop.toml
@@ -81,10 +66,17 @@ impl Order {
                         && qty > 0
                         && !lines.iter().any(|(i, _)| *i == index)
                     {
-                        lines.push((index, qty.min(999)));
+                        lines.push((index, qty.min(basket::MOST_OF_ONE)));
                     }
                 }
             }
+        }
+        // Saved before the name and world had a box each: "Name @ World".
+        if world.is_empty()
+            && let Some((name, saved_world)) = split_name_and_world(&character)
+        {
+            character = name;
+            world = saved_world;
         }
 
         let order = Order {
@@ -92,6 +84,8 @@ impl Order {
             lines: RwSignal::new(lines),
             own_mats: RwSignal::new(own_mats),
             character: RwSignal::new(character),
+            world: RwSignal::new(world),
+            email: RwSignal::new(email),
             note: RwSignal::new(note),
         };
         // An order left for 12 hours is gone before the page shows it.
@@ -129,10 +123,10 @@ impl Order {
         order
     }
 
-    /// Clears the whole order (items, note, materials tick and character)
-    /// once it has gone 12 hours without a change, which is when the browser
-    /// deletes its cookie. Where cookies are turned off, there's no cookie to
-    /// go by, so the order is kept.
+    /// Clears the whole order (items, note, materials tick and the buyer's
+    /// details) once it has gone 12 hours without a change, which is when
+    /// the browser deletes its cookie. Where cookies are turned off, there's
+    /// no cookie to go by, so the order is kept.
     fn forget_if_stale(&self) {
         if !self.holds_anything() || !browser::cookies_enabled() {
             return;
@@ -144,17 +138,20 @@ impl Order {
             self.lines.set(Vec::new());
             self.own_mats.set(false);
             self.character.set(String::new());
+            self.world.set(String::new());
+            self.email.set(String::new());
             self.note.set(String::new());
         }
     }
 
-    /// Whether there's anything to save: items, the materials tick, a
-    /// character name or a note.
+    /// Whether there's anything to save: items, the materials tick, the
+    /// buyer's details or a note.
     fn holds_anything(&self) -> bool {
         self.lines.with_untracked(|lines| !lines.is_empty())
             || self.own_mats.get_untracked()
-            || self.character.with_untracked(|me| !me.is_empty())
-            || self.note.with_untracked(|note| !note.is_empty())
+            || [self.character, self.world, self.email, self.note]
+                .iter()
+                .any(|text| text.with_untracked(|text| !text.is_empty()))
     }
 
     fn saved_text(&self) -> String {
@@ -165,6 +162,8 @@ impl Order {
         let clean = |s: String| s.replace(['\t', '\n'], " ");
         text.push_str(&format!("mats\t{}\n", u8::from(self.own_mats.get())));
         text.push_str(&format!("me\t{}\n", clean(self.character.get())));
+        text.push_str(&format!("world\t{}\n", clean(self.world.get())));
+        text.push_str(&format!("email\t{}\n", clean(self.email.get())));
         text.push_str(&format!("note\t{}\n", clean(self.note.get())));
         text
     }
@@ -195,7 +194,7 @@ impl Order {
     pub fn add(&self, index: usize) {
         self.lines
             .update(|lines| match lines.iter_mut().find(|(i, _)| *i == index) {
-                Some((_, qty)) => *qty = (*qty + 1).min(999),
+                Some((_, qty)) => *qty = (*qty + 1).min(basket::MOST_OF_ONE),
                 None => lines.push((index, 1)),
             });
     }
@@ -206,7 +205,7 @@ impl Order {
             if qty == 0 {
                 lines.retain(|(i, _)| *i != index);
             } else if let Some(line) = lines.iter_mut().find(|(i, _)| *i == index) {
-                line.1 = qty.min(999);
+                line.1 = qty.min(basket::MOST_OF_ONE);
             }
         });
     }
@@ -215,14 +214,21 @@ impl Order {
         self.lines.set(Vec::new());
     }
 
+    /// Once the order has been emailed: the items, note and materials tick
+    /// go, ready for the next order. The buyer's details stay.
+    pub fn sent(&self) {
+        self.lines.set(Vec::new());
+        self.own_mats.set(false);
+        self.note.set(String::new());
+    }
+
     /// Whether any item in the order has a bring-your-own-materials price,
     /// even if that price is "Ask".
     pub fn mats_option(&self) -> bool {
         self.lines.with(|lines| {
-            lines.iter().any(|(i, _)| {
-                let item = &self.shop.items[*i];
-                item.price_own_mats.is_some() || item.own_mats_ask
-            })
+            lines
+                .iter()
+                .any(|(i, _)| basket::has_own_mats_price(&self.shop.items[*i]))
         })
     }
 
@@ -233,77 +239,52 @@ impl Order {
     /// The price of one, taking "I'll bring the materials" into account.
     /// None is "Ask".
     pub fn unit_price(&self, index: usize) -> Option<u64> {
-        let item = &self.shop.items[index];
-        if !self.own_mats.get() {
-            item.price
-        } else if item.own_mats_ask {
-            None
-        } else {
-            item.price_own_mats.or(item.price)
-        }
+        basket::unit_price(&self.shop.items[index], self.own_mats.get())
     }
 
     pub fn totals(&self) -> Totals {
-        let mut totals = Totals {
-            gil: 0,
-            priced: 0,
-            unpriced: 0,
-        };
-        for (index, qty) in self.lines.get() {
-            match self.unit_price(index) {
-                Some(price) => {
-                    totals.gil += price * u64::from(qty);
-                    totals.priced += 1;
-                }
-                None => totals.unpriced += 1,
-            }
-        }
-        totals
+        self.lines
+            .with(|lines| Totals::of(self.shop, lines, self.own_mats.get()))
     }
 
     /// The longest wait in the order.
     pub fn ready(&self) -> Ready {
-        self.lines.with(|lines| {
-            lines
-                .iter()
-                .map(|(i, _)| self.shop.ready_of(&self.shop.items[*i]))
-                .max()
-                .unwrap_or(Ready::NOW)
-        })
+        self.lines
+            .with(|lines| basket::longest_wait(self.shop, lines))
     }
 
-    /// One line to paste into the game's chat box.
-    pub fn tell_message(&self) -> String {
-        let list: Vec<String> = self
-            .lines
-            .get()
-            .iter()
-            .map(|(i, qty)| format!("{qty}x {}", self.shop.items[*i].name))
-            .collect();
-        let mut text = format!(
-            "{} Hi! I'd like to order: {}.",
-            self.shop.tell_command(),
-            list.join(", ")
-        );
-        let totals = self.totals();
-        match totals.in_words() {
-            Some(total) => text.push_str(&format!(" That comes to {total}.")),
-            None if totals.unpriced > 0 => text.push_str(" Please tell me the price."),
-            None => {}
-        }
-        if self.using_own_mats() {
-            text.push(' ');
-            text.push_str(MATS_TELL);
-        }
-        let note = self.note.get();
-        if !note.trim().is_empty() {
-            text.push(' ');
-            text.push_str(note.trim());
-        }
-        text
+    /// What's wrong with the buyer's details for sending the order by email,
+    /// if anything, in the order the boxes come.
+    pub fn problem_before_emailing(&self) -> Option<&'static str> {
+        basket::note_problem(&self.note.get())
+            .or_else(|| basket::character_problem(&self.character.get()))
+            .or_else(|| basket::world_problem(&self.world.get()))
+            .or_else(|| basket::email_problem(&self.email.get()))
     }
 
-    /// A message for Discord or email.
+    /// The order as the orders service takes it, with the buyer's details
+    /// tidied. `website` is the hidden box's value.
+    pub fn for_email(&self, website: String) -> EmailOrder {
+        EmailOrder {
+            items: self
+                .lines
+                .get()
+                .into_iter()
+                .map(|(index, quantity)| Ordered {
+                    name: self.shop.items[index].name.clone(),
+                    quantity,
+                })
+                .collect(),
+            own_mats: self.using_own_mats(),
+            note: basket::tidy(&self.note.get()),
+            character: basket::tidy(&self.character.get()),
+            world: basket::tidy_world(&self.world.get()),
+            email: self.email.get().trim().to_string(),
+            website,
+        }
+    }
+
+    /// A message to paste into Discord.
     pub fn written_message(&self) -> String {
         let mut text = format!("Hi! I'd like to order from {}:\n", self.shop.shop.name);
         for (index, qty) in self.lines.get() {
@@ -331,55 +312,68 @@ impl Order {
             text.push_str(note.trim());
             text.push('\n');
         }
-        let me = self.character.get();
-        if !me.trim().is_empty() {
-            text.push_str(&format!("My character: {}\n", me.trim()));
+        let me = character_line(&self.character.get(), &self.world.get());
+        if !me.is_empty() {
+            text.push_str(&format!("My character: {me}\n"));
         }
         text.trim_end().to_string()
     }
 }
 
+/// "Mira Ashwood @ Cerberus", or as much of it as the buyer gave.
+fn character_line(name: &str, world: &str) -> String {
+    let (name, world) = (basket::tidy(name), basket::tidy_world(world));
+    match (name.is_empty(), world.is_empty()) {
+        (false, false) => format!("{name} @ {world}"),
+        (false, true) => name,
+        (true, false) => format!("@ {world}"),
+        (true, true) => String::new(),
+    }
+}
+
+/// An order saved before the name and world had a box each held them
+/// together, as "Name @ World" or "Name@World".
+fn split_name_and_world(saved: &str) -> Option<(String, String)> {
+    let (name, world) = saved.split_once('@')?;
+    let (name, world) = (basket::tidy(name), basket::tidy(world));
+    (!name.is_empty() && !world.is_empty()).then_some((name, world))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Totals;
-
-    fn totals(gil: u64, priced: usize, unpriced: usize) -> Totals {
-        Totals {
-            gil,
-            priced,
-            unpriced,
-        }
-    }
-
-    #[test]
-    fn a_priced_order_gives_its_total() {
-        assert_eq!(
-            totals(12_000, 2, 0).in_words().as_deref(),
-            Some("12,000 gil")
-        );
-    }
-
-    #[test]
-    fn items_with_no_price_are_named_after_the_total() {
-        assert_eq!(
-            totals(12_000, 1, 1).in_words().as_deref(),
-            Some("12,000 gil, plus the items with no price yet")
-        );
-    }
-
-    #[test]
-    fn an_order_with_no_prices_has_no_total_rather_than_zero() {
-        assert_eq!(totals(0, 0, 2).in_words(), None);
-    }
+    use super::*;
 
     #[test]
     fn the_materials_rule_is_in_plain_english() {
-        for line in [super::MATS_TELL, super::MATS_WRITTEN] {
+        for line in [MATS_WRITTEN, basket::MATS_RULE] {
             assert!(!line.contains("n't"), "no negative contractions: {line}");
-            assert!(line.starts_with("I will bring all the materials. If I cannot"));
             assert!(line.contains("the standard price"));
         }
-        // The /tell's one chat line also carries the order itself.
-        assert!(super::MATS_TELL.len() < 100);
+        assert!(MATS_WRITTEN.starts_with("I will bring all the materials. If I cannot"));
+    }
+
+    #[test]
+    fn a_saved_name_and_world_are_split_into_their_boxes() {
+        assert_eq!(
+            split_name_and_world("Mira Ashwood @ Cerberus"),
+            Some(("Mira Ashwood".into(), "Cerberus".into()))
+        );
+        assert_eq!(
+            split_name_and_world("Mira Ashwood@Cerberus"),
+            Some(("Mira Ashwood".into(), "Cerberus".into()))
+        );
+        assert_eq!(split_name_and_world("Mira Ashwood"), None);
+        assert_eq!(split_name_and_world("Mira Ashwood @ "), None);
+    }
+
+    #[test]
+    fn the_character_line_uses_what_was_given() {
+        assert_eq!(
+            character_line(" Mira  Ashwood ", "cerberus"),
+            "Mira Ashwood @ Cerberus"
+        );
+        assert_eq!(character_line("Mira Ashwood", ""), "Mira Ashwood");
+        assert_eq!(character_line("", "Cerberus"), "@ Cerberus");
+        assert_eq!(character_line(" ", " "), "");
     }
 }

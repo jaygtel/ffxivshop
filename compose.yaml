@@ -1,5 +1,6 @@
-# Runs the site on your server, behind your Traefik, and the prices service
-# that keeps its market prices up to date.
+# Runs the site on your server, behind your Traefik, the prices service that
+# keeps its market prices up to date, and the orders service that emails the
+# orders sent with the order panel's Send by email.
 #
 #   docker compose up -d --build
 #   cp deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
@@ -8,7 +9,9 @@
 #
 # No ports are published on the server. The site joins the existing
 # traefik_proxy network, where Traefik reaches it by name through Docker's
-# DNS: http://aether-allure-site:8080
+# DNS: http://aether-allure-site:8080. It also joins this project's own
+# network, where it passes orders on to the orders service, which nothing
+# else can reach.
 
 name: aether-allure
 
@@ -29,6 +32,8 @@ services:
     restart: unless-stopped
     networks:
       - traefik_proxy
+      # Where nginx finds the orders service (deploy/nginx.conf).
+      - default
     # prices.json from the prices service, which nginx serves (read-only).
     volumes:
       - prices:/srv/prices:ro
@@ -84,11 +89,56 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Emails each order sent with the order panel's Send by email through
+  # Postmark, to you with a copy to the buyer, and tells the page its order
+  # number. The site's nginx passes the orders on to it. Its settings come
+  # from .env (see .env.example); until they're set, the order panel says
+  # sending by email isn't ready. See what it did: docker compose logs orders
+  orders:
+    build:
+      context: .
+      target: orders
+    image: aether-allure-orders:latest
+    container_name: aether-allure-orders
+    restart: unless-stopped
+    # Passes on the stop signal, so it stops straight away.
+    init: true
+    environment:
+      # The secret. Only this container is given it.
+      POSTMARK_SERVER_TOKEN: ${POSTMARK_SERVER_TOKEN:-}
+      ORDER_EMAIL_FROM: ${ORDER_EMAIL_FROM:-}
+      ORDER_EMAIL_TO: ${ORDER_EMAIL_TO:-}
+      ORDER_EMAIL_REPLY_TO: ${ORDER_EMAIL_REPLY_TO:-}
+      POSTMARK_SMTP_PORT: ${POSTMARK_SMTP_PORT:-587}
+      ORDERS_PER_HOUR: ${ORDERS_PER_HOUR:-3}
+      ORDERS_PER_DAY: ${ORDERS_PER_DAY:-20}
+    # This week's market prices (read-only), so the receipt has the prices
+    # the order panel showed.
+    volumes:
+      - prices:/srv/prices:ro
+    # Stays off traefik_proxy: only the site can reach it, on this project's
+    # own network, and it only reaches out to Postmark.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   # Traefik's existing network. Compose joins it but never creates or removes it.
   traefik_proxy:
     name: traefik_proxy
     external: true
+  # This project's own network (aether-allure_default), which Compose makes:
+  # the site, the prices service and the orders service.
+  default: {}
 
 volumes:
   # prices.json: the prices service writes it, the site reads it.

@@ -7,13 +7,18 @@
 #   shop-tools   compiles shop-tools
 #   prices       what also runs on the server: shop-tools updating the market
 #                prices in prices.json every week, for the site to read
+#   shop-orders  compiles the orders service
+#   orders       what also runs on the server: the orders service, emailing
+#                the orders sent with the order panel's Send by email
 #
-# On the server, `docker compose up -d --build` builds and runs `site` and
-# `prices` (see compose.yaml). Zed builds `dev` (see .devcontainer/devcontainer.json).
+# On the server, `docker compose up -d --build` builds and runs `site`,
+# `prices` and `orders` (see compose.yaml). Zed builds `dev` (see
+# .devcontainer/devcontainer.json).
 # Requires BuildKit, which Docker uses by default.
 #
 # Nothing secret is needed to build, and .dockerignore keeps .env out of the
-# build, so no image ever contains your settings.
+# build, so no image ever contains your settings. The orders service's
+# Postmark token reaches only its running container (see compose.yaml).
 
 # Only bootstraps rustup; the toolchain that's used comes from
 # rust-toolchain.toml. Keep the two equal so Rust isn't downloaded twice.
@@ -244,3 +249,34 @@ COPY shop.toml /app/shop.toml
 ENV CARGO_TARGET_DIR=/tmp
 USER prices
 ENTRYPOINT ["shop-tools"]
+
+# =============================================================================
+# Compiles the orders service, with the same caches as `build`.
+FROM tools AS shop-orders
+
+WORKDIR /app
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --locked -p shop-orders \
+    && cp target/release/shop-orders /usr/local/bin/shop-orders
+
+# =============================================================================
+# What also runs on the server: the orders service. It takes the orders sent
+# with the order panel's Send by email, which the site's nginx passes on to it
+# (see deploy/nginx.conf), and emails each one through Postmark, to you with a
+# copy to the buyer. Its settings come from .env through compose.yaml. It runs
+# as an unprivileged user and only reaches out to Postmark. It needs no CA
+# certificates from Debian: it carries its own.
+FROM debian:${DEBIAN_RELEASE}-slim AS orders
+
+RUN set -eux; \
+    groupadd --system --gid 10002 orders; \
+    useradd --system --uid 10002 --gid orders --no-create-home --shell /usr/sbin/nologin orders
+
+COPY --from=shop-orders /usr/local/bin/shop-orders /usr/local/bin/shop-orders
+COPY shop.toml /app/shop.toml
+
+USER orders
+ENTRYPOINT ["shop-orders"]
+CMD ["--listen", "0.0.0.0:8080", "--prices", "/srv/prices/prices.json", "/app/shop.toml"]

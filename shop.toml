@@ -46,8 +46,8 @@ tooltips = true                          # Square Enix's Eorzea Database hover t
 demo = true
 
 how_to_order = [
-  "Add what you'd like to your order, then copy it.",
-  "Send it to me with a /tell or on Discord.",
+  "Add what you'd like to your order.",
+  "Send it to me by email or on Discord.",
   "I'll confirm the price and when it'll be ready.",
   "Collect it from me at my house with a trade.",
 ]
@@ -72,7 +72,12 @@ plot = 3                                 # 31-60 are in the subdivision
 
 [contact]
 note = "I usually reply within a few hours, most evenings and weekends (UK time)."
-tell = true                              # shows "/tell Sigrid Halvorsen@Sagittarius" with a copy button
+tell = true                              # shows "/tell Sigrid Halvorsen@Sagittarius" with a copy button under Request a craft
+# The order panel's Send by email button. It emails the order to you, with a
+# copy to the buyer, through the orders service (see compose.yaml), which
+# needs its settings in .env (see .env.example). Set it to false to offer
+# only Copy for Discord.
+send_by_email = true
 friend_request = true
 message_book = true                      # visitors can leave a note in the estate's message book
 # linkshell = "Garden Crafters (CWLS)"

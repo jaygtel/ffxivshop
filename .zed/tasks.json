@@ -55,6 +55,20 @@
     "save": "all"
   },
   {
+    "label": "orders service: save emails to files",
+    // Runs the orders service, so Send by email works in trunk serve: each
+    // order is saved in target/emails (the email as a .eml file, and its HTML
+    // and plain-text copies) instead of being sent. Open the .html file in a
+    // browser to see the receipt. It reads ORDER_EMAIL_FROM and
+    // ORDER_EMAIL_TO from .env, and takes the receipt's pictures and fonts
+    // from trunk serve. Stop it with ctrl-c.
+    "command": "cargo run -q -p shop-orders -- --prices dist/prices.json --save-to target/emails --assets http://localhost:8080",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "save": "all"
+  },
+  {
     "label": "shop-tools: find selected item",
     // Select an item name in the editor, then run this.
     "command": "cargo",
