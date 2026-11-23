@@ -166,6 +166,63 @@ pub async fn copy(text: &str) -> bool {
     }
 }
 
+/// Loads a small text file from the site, such as /prices.json. None if it's
+/// missing, the server answers with an error, or a step takes longer than
+/// `wait_ms`.
+pub async fn fetch_text(address: &str, wait_ms: i32) -> Option<String> {
+    let window = web_sys::window()?;
+    let response = within(&window, window.fetch_with_str(address), wait_ms).await?;
+    let response: web_sys::Response = response.dyn_into().ok()?;
+    if !response.ok() {
+        return None;
+    }
+    within(&window, response.text().ok()?, wait_ms)
+        .await?
+        .as_string()
+}
+
+/// Sends `json` to the site's own server, and gives back the answer's status
+/// and text. None if it couldn't be sent, such as when the visitor is
+/// offline, or no answer came within `wait_ms`.
+pub async fn post_json(address: &str, json: &str, wait_ms: i32) -> Option<(u16, String)> {
+    let window = web_sys::window()?;
+    let headers = web_sys::Headers::new().ok()?;
+    headers.set("Content-Type", "application/json").ok()?;
+    let request = web_sys::RequestInit::new();
+    request.set_method("POST");
+    request.set_headers(&headers);
+    request.set_body(&JsValue::from_str(json));
+    let response = within(
+        &window,
+        window.fetch_with_str_and_init(address, &request),
+        wait_ms,
+    )
+    .await?;
+    let response: web_sys::Response = response.dyn_into().ok()?;
+    let status = response.status();
+    let text = within(&window, response.text().ok()?, wait_ms)
+        .await?
+        .as_string()
+        .unwrap_or_default();
+    Some((status, text))
+}
+
+/// Waits for `promise`, but no longer than `wait_ms`. None if it failed or
+/// took too long.
+async fn within(
+    window: &web_sys::Window,
+    promise: js_sys::Promise,
+    wait_ms: i32,
+) -> Option<JsValue> {
+    let timer = js_sys::Promise::new(&mut |done, _| {
+        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&done, wait_ms);
+    });
+    let first = js_sys::Promise::race(&js_sys::Array::of2(&promise, &timer));
+    let value = wasm_bindgen_futures::JsFuture::from(first).await.ok()?;
+    // The timer finishes with nothing.
+    (!value.is_undefined()).then_some(value)
+}
+
 /// Adds a `<script src=...>` to the page once.
 pub fn load_script(src: &str) {
     let Some(document) = web_sys::window().and_then(|w| w.document()) else {

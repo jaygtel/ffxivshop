@@ -2,6 +2,7 @@
 //! WebAssembly with Leptos. Everything it shows comes from shop.toml.
 
 mod app;
+mod basket;
 mod browser;
 mod components;
 mod model;
@@ -21,7 +22,20 @@ fn main() {
     // The market prices come first, so the page never shows one price and
     // then another. Without them, shop.toml's prices are used.
     wasm_bindgen_futures::spawn_local(async {
-        let prices = prices::fetch().await;
+        let prices = match browser::fetch_text(prices::ADDRESS, prices::WAIT_MS)
+            .await
+            .map(|text| prices::read(&text))
+        {
+            Some(Ok(prices)) => prices,
+            Some(Err(problem)) => {
+                leptos::logging::warn!(
+                    "{} isn't readable ({problem}); using shop.toml's prices",
+                    prices::ADDRESS
+                );
+                None
+            }
+            None => None,
+        };
         leptos::mount::mount_to_body(move || view! { <App prices /> });
     });
 }

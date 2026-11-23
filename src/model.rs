@@ -1,9 +1,10 @@
 //! Everything the shop shows comes from `shop.toml`. This module reads and
 //! checks that file.
 //!
-//! It is compiled twice: into the website, and into `build.rs`, so a mistake
-//! in `shop.toml` stops the build with a readable message instead of shipping
-//! a broken page. Keep it free of browser-only code.
+//! It is compiled into the website and into `build.rs`, so a mistake in
+//! `shop.toml` stops the build with a readable message instead of shipping a
+//! broken page, and into the orders service (orders/), which reads the same
+//! file to price an order it emails. Keep it free of browser-only code.
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -131,9 +132,13 @@ pub struct Contact {
     /// For example how quickly you usually reply.
     #[serde(default)]
     pub note: Option<String>,
-    /// Show a ready-made `/tell Name@World` command.
+    /// Show a ready-made `/tell Name@World` command under Request a craft.
     #[serde(default = "yes")]
     pub tell: bool,
+    /// The order panel's Send by email button, which needs the orders service
+    /// (see compose.yaml) and its settings in .env.
+    #[serde(default)]
+    pub send_by_email: bool,
     #[serde(default)]
     pub friend_request: bool,
     /// Visitors can leave a note in your estate's message book.

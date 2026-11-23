@@ -1,6 +1,8 @@
-//! The visitor's order and the messages they copy to send it.
+//! The visitor's order, and the two ways to send it: by email, through the
+//! orders service on the server, or copied for a Discord message.
 
 use super::glyphs::GilIcon;
+use crate::basket::{Answer, MATS_RULE, NOTE_LIMIT, SEND_ADDRESS};
 use crate::browser;
 use crate::model::{Shop, gil};
 use crate::order::Order;
@@ -8,37 +10,95 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use std::time::Duration;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Copied {
-    Nothing,
-    Tell,
-    Written,
+/// How long the panel waits for the orders service to answer.
+const SEND_WAIT_MS: i32 = 30_000;
+
+/// An order that has just been emailed.
+#[derive(Clone)]
+struct Sent {
+    number: String,
+    /// Where the copy went.
+    email: String,
 }
 
 #[component]
 pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
     let contact = &shop.contact;
-    let copied = RwSignal::new(Copied::Nothing);
+    let by_email = contact.send_by_email;
+    let copied = RwSignal::new(false);
     // If the browser blocks the clipboard, the message is shown for copying by hand.
     let by_hand = RwSignal::new(None::<String>);
+    let sending = RwSignal::new(false);
+    // Why the order wasn't sent, for the buyer to put right.
+    let problem = RwSignal::new(None::<String>);
+    let sent = RwSignal::new(None::<Sent>);
+    // The hidden box (see `trap` below).
+    let trap = RwSignal::new(String::new());
 
-    let copy = move |which: Copied, text: String| {
+    // Adding to a new order takes away the note that the last one was sent.
+    Effect::new(move |_| {
+        if !order.is_empty() {
+            sent.set(None);
+        }
+    });
+
+    let copy = move |text: String| {
         spawn_local(async move {
             if browser::copy(&text).await {
                 by_hand.set(None);
-                copied.set(which);
-                set_timeout(
-                    move || {
-                        if copied.get_untracked() == which {
-                            copied.set(Copied::Nothing);
-                        }
-                    },
-                    Duration::from_millis(2200),
-                );
+                copied.set(true);
+                set_timeout(move || copied.set(false), Duration::from_millis(2200));
             } else {
                 by_hand.set(Some(text));
             }
         });
+    };
+
+    let send = move |_| {
+        if sending.get_untracked() {
+            return;
+        }
+        if let Some(why) = order.problem_before_emailing() {
+            problem.set(Some(why.to_string()));
+            return;
+        }
+        problem.set(None);
+        by_hand.set(None);
+        sending.set(true);
+        let request = order.for_email(trap.get_untracked());
+        let email = request.email.clone();
+        spawn_local(async move {
+            let json = serde_json::to_string(&request).unwrap_or_default();
+            let answer = browser::post_json(SEND_ADDRESS, &json, SEND_WAIT_MS)
+                .await
+                .map(|(status, text)| (status, serde_json::from_str::<Answer>(&text).ok()));
+            sending.set(false);
+            match answer {
+                Some((
+                    200,
+                    Some(Answer {
+                        number: Some(number),
+                        ..
+                    }),
+                )) => {
+                    order.sent();
+                    sent.set(Some(Sent { number, email }));
+                }
+                Some((
+                    _,
+                    Some(Answer {
+                        problem: Some(why), ..
+                    }),
+                )) => problem.set(Some(why)),
+                _ => problem.set(Some(not_sent(shop))),
+            }
+        });
+    };
+    // Changing a box puts away the last problem: it may be fixed now.
+    let edited = move || {
+        if problem.get_untracked().is_some() {
+            problem.set(None);
+        }
     };
 
     let written_label = if contact.discord.is_some() {
@@ -46,12 +106,23 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
     } else {
         "Copy as a message"
     };
-    let where_to_send = match (&contact.discord, &contact.email) {
-        (Some(discord), _) => format!(" or into a Discord message to {discord}"),
-        (None, Some(email)) => format!(" or into an email to {email}"),
-        (None, None) => String::new(),
+    let how_to_send = match (by_email, &contact.discord, &contact.email) {
+        (true, Some(discord), _) => format!(
+            "Send by email sends your order to me, with a copy to you. Or copy it, then paste it into a Discord message to {discord}."
+        ),
+        (true, None, _) => "Send by email sends your order to me, with a copy to you. Or copy it to send it yourself.".to_string(),
+        (false, Some(discord), _) => format!("Paste it into a Discord message to {discord}."),
+        (false, None, Some(email)) => format!("Paste it into an email to {email}."),
+        (false, None, None) => "Paste it into a message to me.".to_string(),
     };
-    let show_tell = contact.tell;
+    // With Send by email, copying is the second choice.
+    let copy_class = if by_email { "btn" } else { "btn btn-primary" };
+    let ready_to = match (by_email, contact.discord.is_some()) {
+        (true, true) => "ready to send by email or on Discord",
+        (true, false) => "ready to send by email",
+        (false, true) => "ready to copy for Discord",
+        (false, false) => "ready to copy as a message",
+    };
 
     view! {
         <section class="window order" id="order" aria-labelledby="order-title">
@@ -68,11 +139,34 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
             <div class="window-body">
                 <Show
                     when=move || !order.is_empty()
-                    fallback=|| {
-                        view! {
-                            <p class="order-empty">
-                                "Nothing yet. Choose Add next to anything in the shop and it will collect here, ready to send by /tell or message."
-                            </p>
+                    fallback=move || {
+                        match sent.get() {
+                            Some(Sent { number, email }) => {
+                                view! {
+                                    <div class="order-sent" role="status">
+                                        <p>
+                                            <strong>"Order sent."</strong>
+                                            " Your order number is "
+                                            <strong class="order-number">{number}</strong>
+                                            "."
+                                        </p>
+                                        <p class="order-small">
+                                            "A copy is on its way to " {email}
+                                            ". I'll reply to confirm the price and when it'll be ready."
+                                        </p>
+                                    </div>
+                                }
+                                    .into_any()
+                            }
+                            None => {
+                                view! {
+                                    <p class="order-empty">
+                                        "Nothing yet. Choose Add next to anything in the shop and it will collect here, "
+                                        {ready_to} "."
+                                    </p>
+                                }
+                                    .into_any()
+                            }
                         }
                     }
                 >
@@ -119,12 +213,12 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                         "I'll bring the materials (uses the lower prices)"
                     </label>
                     // The rule for bringing materials, while the box is ticked.
-                    // The copied order says the same (MATS_* in order.rs).
+                    // The copied order and the receipt say the same.
                     <p
                         class="mats-rule"
                         hidden=move || !(order.own_mats.get() && order.mats_option())
                     >
-                        "You must bring all the materials, not just some. If you cannot, I will use my own and charge the standard price."
+                        {MATS_RULE}
                     </p>
 
                     <div class="field">
@@ -132,65 +226,120 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                         <input
                             id="order-note"
                             type="text"
-                            maxlength="200"
+                            maxlength=NOTE_LIMIT
                             placeholder="Dye, materia, how many in HQ"
                             prop:value=move || order.note.get()
-                            on:input=move |ev| order.note.set(event_target_value(&ev))
+                            on:input=move |ev| {
+                                order.note.set(event_target_value(&ev));
+                                edited();
+                            }
                         />
                     </div>
-                    <div class="field">
-                        <label for="order-me">"Your character, for messages"</label>
-                        <input
-                            id="order-me"
-                            type="text"
-                            maxlength="60"
-                            placeholder="Name @ World"
-                            autocomplete="off"
-                            prop:value=move || order.character.get()
-                            on:input=move |ev| order.character.set(event_target_value(&ev))
-                        />
+                    <div class="field-pair">
+                        <div class="field">
+                            <label for="order-me">"Your character"</label>
+                            <input
+                                id="order-me"
+                                type="text"
+                                maxlength="30"
+                                placeholder="First and last name"
+                                autocomplete="off"
+                                prop:value=move || order.character.get()
+                                on:input=move |ev| {
+                                    order.character.set(event_target_value(&ev));
+                                    edited();
+                                }
+                            />
+                        </div>
+                        <div class="field">
+                            <label for="order-world">"Your world"</label>
+                            <input
+                                id="order-world"
+                                type="text"
+                                maxlength="20"
+                                placeholder="Cerberus"
+                                autocomplete="off"
+                                prop:value=move || order.world.get()
+                                on:input=move |ev| {
+                                    order.world.set(event_target_value(&ev));
+                                    edited();
+                                }
+                            />
+                        </div>
                     </div>
+                    {by_email
+                        .then(|| {
+                            view! {
+                                <div class="field">
+                                    <label for="order-email">"Your email, for your copy"</label>
+                                    <input
+                                        id="order-email"
+                                        type="email"
+                                        maxlength="254"
+                                        placeholder="name@example.com"
+                                        autocomplete="email"
+                                        prop:value=move || order.email.get()
+                                        on:input=move |ev| {
+                                            order.email.set(event_target_value(&ev));
+                                            edited();
+                                        }
+                                    />
+                                </div>
+                                // A box people never see: it's off the screen, hidden from
+                                // screen readers and skipped by the keyboard. Bots that
+                                // fill in every box fill this one in too, and the orders
+                                // service turns their orders away.
+                                <div class="trap" aria-hidden="true">
+                                    <label for="order-website">"Leave this empty"</label>
+                                    <input
+                                        id="order-website"
+                                        type="text"
+                                        name="website"
+                                        tabindex="-1"
+                                        autocomplete="off"
+                                        prop:value=move || trap.get()
+                                        on:input=move |ev| trap.set(event_target_value(&ev))
+                                    />
+                                </div>
+                            }
+                        })}
 
+                    {move || {
+                        problem
+                            .get()
+                            .map(|why| {
+                                view! {
+                                    <p class="order-problem" role="alert">
+                                        {why}
+                                    </p>
+                                }
+                            })
+                    }}
                     <div class="order-actions">
-                        {show_tell
+                        {by_email
                             .then(|| {
                                 view! {
                                     <button
                                         type="button"
                                         class="btn btn-primary"
-                                        on:click=move |_| copy(Copied::Tell, order.tell_message())
+                                        aria-disabled=move || sending.get().then_some("true")
+                                        on:click=send
                                     >
                                         {move || {
-                                            if copied.get() == Copied::Tell {
-                                                "Copied"
-                                            } else {
-                                                "Copy as /tell"
-                                            }
+                                            if sending.get() { "Sending…" } else { "Send by email" }
                                         }}
                                     </button>
                                 }
                             })}
                         <button
                             type="button"
-                            class="btn"
-                            on:click=move |_| copy(Copied::Written, order.written_message())
+                            class=copy_class
+                            on:click=move |_| copy(order.written_message())
                         >
-                            {move || {
-                                if copied.get() == Copied::Written {
-                                    "Copied"
-                                } else {
-                                    written_label
-                                }
-                            }}
+                            {move || if copied.get() { "Copied" } else { written_label }}
                         </button>
                     </div>
-                    <p class="order-small">
-                        {if show_tell {
-                            format!("Paste it into your chat box in game{where_to_send}.")
-                        } else {
-                            format!("Paste it{where_to_send}.")
-                        }}
-                    </p>
+                    <p class="order-small">{how_to_send.clone()}</p>
                     {move || {
                         by_hand
                             .get()
@@ -236,6 +385,17 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
             </button>
         </div>
     }
+}
+
+/// What the panel says when the orders service couldn't be reached, or gave
+/// no reason.
+fn not_sent(shop: &Shop) -> String {
+    let mut words =
+        "Your order could not be sent just now. Please try again in a few minutes.".to_string();
+    if shop.contact.discord.is_some() {
+        words.push_str(" Or copy it for Discord.");
+    }
+    words
 }
 
 /// The order's total, worded like the shop list so it never shows a 0 that
@@ -295,5 +455,19 @@ fn OrderLine(shop: &'static Shop, order: Order, index: usize) -> impl IntoView {
                 {move || line_total().unwrap_or_else(|| "Ask".to_string())}
             </span>
         </li>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::not_sent;
+    use crate::model::Shop;
+
+    #[test]
+    fn the_panels_own_words_are_plain_english() {
+        let shop = Shop::from_toml(include_str!("../../shop.toml")).unwrap();
+        let words = not_sent(&shop);
+        assert!(!words.contains("n't"), "{words}");
+        assert!(words.ends_with("Or copy it for Discord."));
     }
 }

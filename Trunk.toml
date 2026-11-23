@@ -8,3 +8,10 @@ public_url = "./"
 
 [serve]
 port = 8080
+
+# trunk serve passes the order panel's Send by email on to the orders service
+# on your computer, as nginx does on the server. Start it with the "orders
+# service: save emails to files" task; without it, Send by email says the
+# order could not be sent.
+[[proxy]]
+backend = "http://127.0.0.1:8081/api/order"

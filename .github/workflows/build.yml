@@ -1,6 +1,6 @@
-# The build check: builds the site and the prices service on GitHub for every
-# pull request into main, the same way the server builds them, so a change
-# that doesn't build can't reach main. The "Protect main" ruleset only lets a pull request merge
+# The build check: builds the site, the prices service and the orders service
+# on GitHub for every pull request into main, the same way the server builds
+# them, so a change that doesn't build can't reach main. The "Protect main" ruleset only lets a pull request merge
 # once this check, "Build", has passed.
 #
 # It only builds. Nothing is published and nothing is deployed: the server
@@ -60,4 +60,13 @@ jobs:
         with:
           context: .
           target: prices
+          outputs: type=cacheonly
+
+      # And the "orders" stage: the service that emails the orders sent with
+      # the order panel's Send by email. It needs no settings to build.
+      - name: Build the orders service
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: orders
           outputs: type=cacheonly

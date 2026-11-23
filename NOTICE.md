@@ -22,6 +22,7 @@ Everything in this repository is under the BSD 3-Clause License in
   Cargo files;
 - the JavaScript and development tools:
   [`assets/js/intro.js`](assets/js/intro.js), shop-tools in [`tools/`](tools),
+  the orders service in [`orders/`](orders),
   the [`Dockerfile`](Dockerfile), [`compose.yaml`](compose.yaml),
   [`deploy/`](deploy), the build check in [`.github/`](.github), the git hook
   in [`.githooks/`](.githooks), and the dev container and editor settings in
@@ -45,6 +46,9 @@ Jason Telford's written permission:
   [`src/components/hero.rs`](src/components/hero.rs) (`EMBLEM`, `CORNERS` and
   `DIVIDER`), and the window corner pieces drawn in
   [`assets/css/main.css`](assets/css/main.css) (`.window::before`);
+- the order receipt email's pictures in
+  [`assets/img/email/`](assets/img/email): the emblem, the divider, the
+  diamond and the frame's corner pieces, drawn from the pieces above;
 - the Aether & Allure name, and the brand and visual identity made from it and
   the pieces above.
 
