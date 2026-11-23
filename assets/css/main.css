@@ -1948,9 +1948,25 @@ select option {
 }
 
 .check input {
+  /* Keeps its size beside a long label on a narrow screen. */
+  flex: none;
   width: 16px;
   height: 16px;
+  /* The browsers' usual margin, written down so .mats-rule can line up. */
+  margin: 3px 3px 3px 4px;
   accent-color: var(--gold-2);
+}
+
+/* The rule for bringing materials, under the tick while it's ticked. The
+   dashed line marks it out; the left margin lines it up with the tick's
+   words (the box's 4px + 16px + 3px, then the 9px gap above). */
+.mats-rule {
+  margin: -8px 0 0 32px;
+  padding: 6px 8px;
+  border: 1px dashed rgba(240, 214, 140, 0.7); /* --gold-hi at 70% */
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: var(--step--1);
 }
 
 .field {

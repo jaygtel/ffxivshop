@@ -106,8 +106,9 @@ shop-tools' `prices` command also reads current market board prices from
 [Universalis](https://universalis.app) each time it runs, and keeps none of
 them. Players upload those prices from the game. Universalis's own software is
 under the MIT License, and it states no terms for its price data. The gil
-prices the command writes into [`shop.toml`](shop.toml) are worked out from
-them.
+prices the command writes, into [`shop.toml`](shop.toml) or into the
+`prices.json` the site reads on the server, are worked out from them and from
+the recipes in FFXIV Teamcraft's game data.
 
 ## Other software
 

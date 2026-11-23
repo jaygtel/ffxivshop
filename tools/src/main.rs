@@ -15,9 +15,13 @@
 //! FFXIV Teamcraft's game-data files and Asvel's Eorzea Database ID list, and
 //! is cached in shop-tools-cache inside the Cargo target directory.
 //!
-//! `prices` sets each item's `price` and `price_own_mats` from the cheapest
-//! listing on your world's market board, following [prices] in shop.toml. It
-//! asks Universalis every time it runs and keeps nothing (see prices.rs).
+//! `prices` sets each item's `price` from the cheapest listing on your world's
+//! market board, and `price_own_mats` from that less what its materials cost
+//! there, following [prices] in shop.toml. It writes them into shop.toml, or
+//! with `--json` into the file the site reads; with `--every-days` it keeps
+//! doing it, as the prices service on the server does. It asks Universalis
+//! every time it runs, and keeps only Teamcraft's recipes and item names
+//! (see prices.rs).
 
 mod prices;
 
@@ -37,9 +41,12 @@ Usage:
   cargo run -p shop-tools -- find <item name words>
   cargo run -p shop-tools -- fill [path/to/shop.toml]
   cargo run -p shop-tools -- prices [path/to/shop.toml]
+  cargo run -p shop-tools -- prices --json <file> [--every-days <days>] [path/to/shop.toml]
 
 Options:
-  --refresh   download fresh item data for find and fill (do this after a game patch)";
+  --refresh          download fresh item data and recipes (do this after a game patch)
+  --json <file>      write the prices to this file for the site, not into shop.toml
+  --every-days <n>   keep running, and update the prices every n days (with --json)";
 
 fn main() {
     let mut refresh = false;
@@ -66,13 +73,8 @@ fn main() {
                 .unwrap_or_else(default_shop_toml);
             Db::load(refresh).and_then(|db| fill(&db, &path))
         }
-        Some("prices") => {
-            let path = args
-                .get(1)
-                .map(PathBuf::from)
-                .unwrap_or_else(default_shop_toml);
-            prices::run(&path)
-        }
+        Some("prices") => prices::Options::from_args(&args[1..], refresh)
+            .and_then(|options| prices::run(&options)),
         _ => Err(USAGE.to_string()),
     };
     if let Err(message) = result {

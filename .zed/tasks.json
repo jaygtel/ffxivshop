@@ -37,10 +37,21 @@
     "save": "all"
   },
   {
-    "label": "shop-tools: set prices from the market board",
-    // Sets each item's price from the cheapest listing on your world's
-    // market board, as [prices] in shop.toml says.
+    "label": "shop-tools: write market prices into shop.toml",
+    // Sets each item's prices in shop.toml from your world's market board, as
+    // [prices] in shop.toml says. On the server this happens every week in
+    // prices.json instead; the prices in shop.toml are the ones used where the
+    // market has none.
     "command": "cargo run -q -p shop-tools -- prices",
+    "save": "all"
+  },
+  {
+    "label": "shop-tools: show market prices in trunk serve",
+    // Writes today's market prices to dist/prices.json, as the server's
+    // prices service does, so the page `trunk serve` shows uses them. Start
+    // trunk serve first, then reload the page. Trunk clears dist/ when it
+    // rebuilds, so run this again after changing anything.
+    "command": "cargo run -q -p shop-tools -- prices --json dist/prices.json",
     "save": "all"
   },
   {

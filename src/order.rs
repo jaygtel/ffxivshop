@@ -13,6 +13,13 @@ const STORAGE_KEY: &str = "ffxiv-shop.order";
 /// again for 12 hours; when the browser deletes it, the order is cleared.
 /// Its value is the time it runs out, in milliseconds since 1970.
 const KEEP_COOKIE: &str = "ffxiv-shop.order-expires";
+
+/// In the copied order when the buyer will bring the materials: they must
+/// bring all of them. The /tell has to fit on one chat line, so it's shorter.
+/// The order panel says the same, under the tick (order_slip.rs).
+const MATS_TELL: &str =
+    "I will bring all the materials. If I cannot, I will pay the standard price.";
+const MATS_WRITTEN: &str = "I will bring all the materials. If I cannot bring them all, you will craft my order at the standard price, with your own materials. I know you will not take only some of the materials.";
 const KEEP_FOR_SECONDS: u32 = 12 * 60 * 60;
 
 #[derive(Clone, Copy)]
@@ -208,12 +215,14 @@ impl Order {
         self.lines.set(Vec::new());
     }
 
-    /// Whether any item in the order has a bring-your-own-materials price.
+    /// Whether any item in the order has a bring-your-own-materials price,
+    /// even if that price is "Ask".
     pub fn mats_option(&self) -> bool {
         self.lines.with(|lines| {
-            lines
-                .iter()
-                .any(|(i, _)| self.shop.items[*i].price_own_mats.is_some())
+            lines.iter().any(|(i, _)| {
+                let item = &self.shop.items[*i];
+                item.price_own_mats.is_some() || item.own_mats_ask
+            })
         })
     }
 
@@ -222,12 +231,15 @@ impl Order {
     }
 
     /// The price of one, taking "I'll bring the materials" into account.
+    /// None is "Ask".
     pub fn unit_price(&self, index: usize) -> Option<u64> {
         let item = &self.shop.items[index];
-        if self.own_mats.get() {
-            item.price_own_mats.or(item.price)
-        } else {
+        if !self.own_mats.get() {
             item.price
+        } else if item.own_mats_ask {
+            None
+        } else {
+            item.price_own_mats.or(item.price)
         }
     }
 
@@ -280,7 +292,8 @@ impl Order {
             None => {}
         }
         if self.using_own_mats() {
-            text.push_str(" I'll bring the materials.");
+            text.push(' ');
+            text.push_str(MATS_TELL);
         }
         let note = self.note.get();
         if !note.trim().is_empty() {
@@ -310,7 +323,8 @@ impl Order {
             None => {}
         }
         if self.using_own_mats() {
-            text.push_str("I'll bring the materials.\n");
+            text.push_str(MATS_WRITTEN);
+            text.push('\n');
         }
         let note = self.note.get();
         if !note.trim().is_empty() {
@@ -356,5 +370,16 @@ mod tests {
     #[test]
     fn an_order_with_no_prices_has_no_total_rather_than_zero() {
         assert_eq!(totals(0, 0, 2).in_words(), None);
+    }
+
+    #[test]
+    fn the_materials_rule_is_in_plain_english() {
+        for line in [super::MATS_TELL, super::MATS_WRITTEN] {
+            assert!(!line.contains("n't"), "no negative contractions: {line}");
+            assert!(line.starts_with("I will bring all the materials. If I cannot"));
+            assert!(line.contains("the standard price"));
+        }
+        // The /tell's one chat line also carries the order itself.
+        assert!(super::MATS_TELL.len() < 100);
     }
 }

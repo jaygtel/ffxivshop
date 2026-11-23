@@ -7,8 +7,8 @@
 #  Adding items: write the in-game name, category, price and ready time,
 #  then run   cargo run -p shop-tools -- fill
 #  to look up the Eorzea Database link, icon, item level and jobs for you.
-#  Then       cargo run -p shop-tools -- prices
-#  sets the prices from the market board for you, if you'd like it to:
+#  On the server, the prices on the site come from the market board and are
+#  updated every week. The prices here are used where the market has none:
 #  see [prices] below.
 #
 #  Your Discord name and email come from .env rather than this file: see
@@ -127,29 +127,43 @@ label = "Housing"
 glyph = "house"
 
 # ─── Prices ──────────────────────────────────────────────────────────────────
-# Run   cargo run -p shop-tools -- prices
-# to set every item's price from the market board on your world (`world`
-# under [location]), using market data from Universalis. For each item it
-# finds the cheapest listing (HQ listings for items with hq = true), takes
-# `undercut` percent off, and rounds up to a whole gil. The price when the
-# buyer brings the materials is then `own_mats` percent less, rounded up too.
-# Items with `auto_price` set to false, and items nobody is selling, keep
-# the prices written here. Rebuild the site afterwards, as after any edit.
+# On the server, the prices service (see compose.yaml) works out every item's
+# prices from the market board on your world (`world` under [location]) when
+# the site starts or is updated, then every week. It uses market data from
+# Universalis and recipes from FFXIV Teamcraft. The site reads the result
+# (prices.json) when it opens, so prices change without a rebuild.
+#
+#   price           the cheapest listing (HQ listings for items with
+#                   hq = true), `undercut` percent less, rounded up to a
+#                   whole gil, and never under the item's `min_price`
+#   price_own_mats  that price less what the item's materials cost there,
+#                   crystals included, and never under the item's
+#                   `min_price_own_mats`. A recipe that makes 3 at once
+#                   takes a third of its materials off each one. "Ask" when
+#                   the materials cost as much as the price or more and the
+#                   item has no `min_price_own_mats`.
+#
+# The prices written here are used where the market has none: for an item
+# nobody is selling, or for the price with your own materials when one of the
+# materials isn't listed. Items with `auto_price` set to false always use the
+# prices written here. To write market prices into this file instead, run
+#             cargo run -p shop-tools -- prices
 
 [prices]
 undercut = 0.5                           # percent below the cheapest listing
-own_mats = 2                             # percent off that price for buyers who bring the materials
 
 # ─── Items ───────────────────────────────────────────────────────────────────
-# name            the in-game name
-# category        one of the keys above
-# price           in gil; leave it out to show "Ask"
-# price_own_mats  optional price if the buyer brings the materials
-# auto_price      false keeps the prices you write here when shop-tools sets prices
-# per             optional, e.g. "each" or "stack of 99"
-# ready           how long until it's ready: "now", "6h", "2d", "1d 12h", "1w"
-# hq              true if you craft it in high quality
-# note            optional short note
+# name                the in-game name
+# category            one of the keys above
+# price               in gil; leave it out to show "Ask"
+# price_own_mats      optional price if the buyer brings the materials
+# min_price           optional: the market price never goes below this
+# min_price_own_mats  optional: nor does the price with your own materials
+# auto_price          false keeps the prices you write here, not the market's
+# per                 optional, e.g. "each" or "stack of 99"
+# ready               how long until it's ready: "now", "6h", "2d", "1d 12h", "1w"
+# hq                  true if you craft it in high quality
+# note                optional short note
 # id, lodestone, icon, ilvl, level, jobs   filled in by shop-tools
 
 [[item]]
