@@ -1,4 +1,4 @@
-![Aether & Allure, Master Artisan: crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.](assets/img/og-card.png)
+![Aether & Allure, Master Artisan: crafted gear, meals and furnishings, made to order in FINAL FANTASY XIV.](../assets/img/og-card.png)
 
 # Aether & Allure
 
@@ -9,7 +9,7 @@ built with [Trunk](https://trunkrs.dev), and runs in a Docker container on your
 own server. The code is kept on GitHub.
 
 © 2026 Jason Telford. The code is released under the
-[BSD 3-Clause License](LICENSE); the logos, artwork and branding are not (see
+[BSD 3-Clause License](../LICENSE); the logos, artwork and branding are not (see
 [License and credits](#license-and-credits)).
 
 ## Documentation
@@ -19,7 +19,7 @@ How to edit the shop, work on the site and run it on your server is in the
 
 ### The shop
 
-- [Editing the shop][]: what each part of [`shop.toml`](shop.toml) controls
+- [Editing the shop][]: what each part of [`shop.toml`](../shop.toml) controls
 - [Adding items][]: looking items up, and setting prices from the market board, with shop-tools
 - [Settings and secrets][]: `.env`, your Discord name and email, and secrets
 - [Item links and icons][]: Eorzea Database links, tooltips and icons
@@ -47,7 +47,7 @@ How to edit the shop, work on the site and run it on your server is in the
 
 ## License and credits
 
-© 2026 Jason Telford. The [BSD 3-Clause License](LICENSE) covers the software
+© 2026 Jason Telford. The [BSD 3-Clause License](../LICENSE) covers the software
 only. [`NOTICE.md`](NOTICE.md) lists what falls under each of these:
 
 | Material | Terms |
@@ -57,7 +57,7 @@ only. [`NOTICE.md`](NOTICE.md) lists what falls under each of these:
 | CSS implementation | BSD 3-Clause License |
 | Original logos and artwork | All rights reserved |
 | Original branding and visual identity | All rights reserved |
-| Third-party fonts: Cinzel, Cormorant Garamond and Alegreya Sans | Their own SIL Open Font License 1.1 (see [`assets/fonts`](assets/fonts)) |
+| Third-party fonts: Cinzel, Cormorant Garamond and Alegreya Sans | Their own SIL Open Font License 1.1 (see [`assets/fonts`](../assets/fonts)) |
 | Third-party game data and assets | Their respective terms |
 
 FINAL FANTASY XIV © SQUARE ENIX CO., LTD. All Rights Reserved. FINAL FANTASY is a
