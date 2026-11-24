@@ -46,9 +46,9 @@ Jason Telford's written permission:
   [`src/components/hero.rs`](../src/components/hero.rs) (`EMBLEM`, `CORNERS` and
   `DIVIDER`), and the window corner pieces drawn in
   [`assets/css/main.css`](../assets/css/main.css) (`.window::before`);
-- the order receipt email's pictures in
-  [`assets/img/email/`](../assets/img/email): the emblem, the divider, the
-  diamond and the frame's corner pieces, drawn from the pieces above;
+- the emails' pictures in [`assets/img/email/`](../assets/img/email), used in
+  the order receipt and the contact page's messages: the emblem, the divider,
+  the diamond and the frame's corner pieces, drawn from the pieces above;
 - the Aether & Allure name, and the brand and visual identity made from it and
   the pieces above.
 
