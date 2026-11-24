@@ -2,7 +2,7 @@ use crate::browser;
 use crate::components::{AetherSky, MenuOpen, SiteNav};
 use crate::model::Shop;
 use crate::order::Order;
-use crate::pages::{self, HomePage, ShopPage};
+use crate::pages::{self, ContactPage, HomePage, MessageDraft, ShopPage};
 use crate::prices::{self, Prices};
 use leptos::prelude::*;
 use leptos_router::components::{Redirect, Route, Router, Routes};
@@ -35,8 +35,10 @@ pub fn App(prices: Option<Prices>) -> impl IntoView {
 /// the page and updates the address, and Back and Forward work as usual.
 #[component]
 fn Site(shop: &'static Shop) -> impl IntoView {
-    // The order lasts the whole visit, whichever page is showing.
+    // The order lasts the whole visit, whichever page is showing, and so does
+    // a message being written on the contact page.
     let order = Order::new(shop);
+    let draft = MessageDraft::new();
     let menu_open = RwSignal::new(false);
     provide_context(MenuOpen(menu_open));
     // While the menu is open, the page behind it doesn't scroll (main.css).
@@ -71,6 +73,10 @@ fn Site(shop: &'static Shop) -> impl IntoView {
                     // The shop page shows itself (below), as it stays in the
                     // site once opened: see src/pages/shop.rs.
                     <Route path=path!("/shop") view=|| () />
+                    <Route
+                        path=path!("/contact")
+                        view=move || view! { <ContactPage shop draft /> }
+                    />
                 </Routes>
                 <ShopPage shop order />
             </div>
