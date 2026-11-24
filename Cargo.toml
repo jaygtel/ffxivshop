@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.88"
 description = "An FFXIV crafting shop page, written in Rust and compiled to WebAssembly."
 # The code only. The logos, artwork and branding it carries, such as the
-# emblem in src/components/hero.rs, are all rights reserved: see NOTICE.md.
+# emblem in src/components/hero.rs, are all rights reserved: see docs/NOTICE.md.
 license = "BSD-3-Clause"
 authors = ["Jason Telford"]
 publish = false
