@@ -12,9 +12,9 @@ use crate::pages;
 use leptos::prelude::*;
 
 // EMBLEM, CORNERS and DIVIDER are Aether & Allure artwork, not code: all
-// rights reserved, and not covered by the BSD licence (see NOTICE.md). If you
-// reuse this file, draw your own in their place. The navigation and its menu
-// (site_nav.rs) show them too, through the functions below.
+// rights reserved, and not covered by the BSD licence (see docs/NOTICE.md).
+// If you reuse this file, draw your own in their place. The navigation and
+// its menu (site_nav.rs) show them too, through the functions below.
 
 /// The emblem, as on the coming-soon page: the night disc, the turning gold
 /// and aether rings, and the floating crystal with its glint.

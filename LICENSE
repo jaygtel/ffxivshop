@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2026 Jason Telford. This licence covers the software in this repository: the Rust application code, the JavaScript and development tools, and the CSS implementation. It does not cover the Aether & Allure logos, artwork, branding or visual identity, which are all rights reserved. Nor does it cover the third-party fonts, which keep their own SIL Open Font License, or the FINAL FANTASY XIV game data and assets, which keep their respective terms. NOTICE.md lists what falls under each.
+Copyright (c) 2026 Jason Telford. This licence covers the software in this repository: the Rust application code, the JavaScript and development tools, and the CSS implementation. It does not cover the Aether & Allure logos, artwork, branding or visual identity, which are all rights reserved. Nor does it cover the third-party fonts, which keep their own SIL Open Font License, or the FINAL FANTASY XIV game data and assets, which keep their respective terms. docs/NOTICE.md lists what falls under each.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 

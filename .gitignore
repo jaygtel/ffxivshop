@@ -11,3 +11,6 @@
 # Server-specific Docker Compose changes
 compose.override.yaml
 .Trash-501/
+
+# Finder's settings, which macOS leaves in every folder it opens
+.DS_Store
