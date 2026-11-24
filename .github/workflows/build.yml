@@ -63,7 +63,8 @@ jobs:
           outputs: type=cacheonly
 
       # And the "orders" stage: the service that emails the orders sent with
-      # the order panel's Send by email. It needs no settings to build.
+      # the order panel's Send by email, and the contact page's messages. It
+      # needs no settings to build.
       - name: Build the orders service
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
