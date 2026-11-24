@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.88"
 description = "Emails the orders sent from the shop's order panel, with a copy to the buyer, through Postmark."
 # The code only. The receipt it sends links to Aether & Allure artwork
-# (assets/img/email), which is all rights reserved: see NOTICE.md.
+# (assets/img/email), which is all rights reserved: see docs/NOTICE.md.
 license = "BSD-3-Clause"
 authors = ["Jason Telford"]
 publish = false
