@@ -1,10 +1,11 @@
-//! Sending a receipt: by SMTP through Postmark, or, for trying the service
-//! out, into files instead.
+//! Sending a receipt, or a message from the contact page: by SMTP through
+//! Postmark, or, for trying the service out, into files instead.
 //!
 //! Postmark takes SMTP on port 587 (or 2525, where a host blocks 587), with
 //! STARTTLS, and the server token as both the user name and the password.
 //! The X-PM-Message-Stream header picks the message stream.
 
+use crate::letter::Letter;
 use crate::receipt::Receipt;
 use lettre::message::header::{Header, HeaderName, HeaderValue};
 use lettre::message::{Mailbox, MultiPart};
@@ -36,6 +37,9 @@ pub struct Addresses<'a> {
     pub from: &'a str,
     pub to: &'a str,
     pub reply_to: Option<&'a str>,
+    /// How the settings for these addresses start, to say which one is
+    /// wrong: "ORDER_EMAIL" or "CONTACT_EMAIL".
+    pub settings: &'a str,
 }
 
 impl Addresses<'_> {
@@ -44,13 +48,18 @@ impl Addresses<'_> {
             address
                 .parse()
                 .map(|address| Mailbox::new(Some(self.shop_name.to_string()), address))
-                .map_err(|_| format!("{setting} \"{address}\" isn't an email address"))
+                .map_err(|_| {
+                    format!(
+                        "{}_{setting} \"{address}\" isn't an email address",
+                        self.settings
+                    )
+                })
         };
         Ok((
-            mailbox("ORDER_EMAIL_FROM", self.from)?,
-            mailbox("ORDER_EMAIL_TO", self.to)?,
+            mailbox("FROM", self.from)?,
+            mailbox("TO", self.to)?,
             self.reply_to
-                .map(|address| mailbox("ORDER_EMAIL_REPLY_TO", address))
+                .map(|address| mailbox("REPLY_TO", address))
                 .transpose()?,
         ))
     }
@@ -106,14 +115,15 @@ impl Mailer {
         }
     }
 
-    pub fn describe(&self) -> String {
+    /// What it does with the emails, which are `what` (orders or messages).
+    pub fn describe(&self, what: &str) -> String {
         match &self.way {
             Way::Postmark(_) => format!(
-                "sending orders from {} to {}, through Postmark",
+                "sending {what} from {} to {}, through Postmark",
                 self.from.email, self.to.email
             ),
             Way::Files(folder) => format!(
-                "saving orders from {} to {} in {}, without sending them",
+                "saving {what} from {} to {} in {}, without sending them",
                 self.from.email,
                 self.to.email,
                 folder.display()
@@ -152,11 +162,45 @@ impl Mailer {
             .map_err(|e| format!("couldn't put the email together: {e}"))
     }
 
+    /// The email for a message from the contact page: to the shop, from the
+    /// shop's own address with the visitor's name beside it ("Mira Ashwood
+    /// via Aether & Allure"), and with Reply-To set to the visitor, so
+    /// replying answers them. `reference` makes its Message-ID unique.
+    pub fn letter(
+        &self,
+        letter: &Letter,
+        reference: &str,
+        visitor: Mailbox,
+    ) -> Result<Message, String> {
+        let shop = self.from.name.clone().unwrap_or_default();
+        let name = match visitor.name.as_deref() {
+            Some(name) if !name.is_empty() => format!("{name} via {shop}"),
+            _ => shop,
+        };
+        Message::builder()
+            .from(Mailbox::new(Some(name), self.from.email.clone()))
+            .to(self.to.clone())
+            .reply_to(visitor)
+            .subject(&letter.subject)
+            .date_now()
+            .message_id(Some(format!("<{reference}@{}>", self.from.email.domain())))
+            .header(MessageStream(self.stream.clone()))
+            .header(Tag("contact".into()))
+            .multipart(MultiPart::alternative_plain_html(
+                letter.text.clone(),
+                letter.html.clone(),
+            ))
+            .map_err(|e| format!("couldn't put the email together: {e}"))
+    }
+
+    /// Sends `message`, or saves it as `name`.eml, with its `html` and
+    /// `text` copies beside it as `name`.html and `name`.txt.
     pub async fn send(
         &self,
         message: Message,
-        number: &str,
-        receipt: &Receipt,
+        name: &str,
+        html: &str,
+        text: &str,
     ) -> Result<(), String> {
         match &self.way {
             Way::Postmark(transport) => transport
@@ -166,13 +210,13 @@ impl Mailer {
                 .map_err(|e| e.to_string()),
             Way::Files(folder) => {
                 let save = |extension: &str, bytes: &[u8]| {
-                    let path = folder.join(format!("{number}.{extension}"));
+                    let path = folder.join(format!("{name}.{extension}"));
                     std::fs::write(&path, bytes)
                         .map_err(|e| format!("can't write {}: {e}", path.display()))
                 };
                 save("eml", &message.formatted())?;
-                save("html", receipt.html.as_bytes())?;
-                save("txt", receipt.text.as_bytes())
+                save("html", html.as_bytes())?;
+                save("txt", text.as_bytes())
             }
         }
     }
@@ -196,7 +240,8 @@ impl Header for MessageStream {
     }
 }
 
-/// Postmark's tag, for finding orders among the sent emails in Postmark.
+/// Postmark's tag, for finding orders or messages among the sent emails in
+/// Postmark.
 #[derive(Debug, Clone)]
 struct Tag(String);
 
@@ -218,7 +263,8 @@ impl Header for Tag {
 pub fn random_hex(bytes: usize) -> String {
     let mut buffer = vec![0u8; bytes];
     if getrandom::fill(&mut buffer).is_err() {
-        // Only for the Message-ID, which still has the order number.
+        // Only for the Message-ID, which still has the order number, or for
+        // a message's reference, which also has the time.
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.subsec_nanos())
@@ -246,6 +292,7 @@ mod tests {
             from: "shop@example.com",
             to: "orders@example.com",
             reply_to,
+            settings: "ORDER_EMAIL",
         }
     }
 
@@ -294,7 +341,8 @@ mod tests {
                 "mira@example.com".parse().unwrap(),
             )
             .unwrap();
-        block_on(mailer.send(message, "AA-2611-7K3Q", &receipt())).unwrap();
+        let receipt = receipt();
+        block_on(mailer.send(message, "AA-2611-7K3Q", &receipt.html, &receipt.text)).unwrap();
         for extension in ["eml", "html", "txt"] {
             assert!(folder.join(format!("AA-2611-7K3Q.{extension}")).exists());
         }
@@ -327,11 +375,83 @@ mod tests {
             from: "shop at example",
             to: "orders@example.com",
             reply_to: None,
+            settings: "ORDER_EMAIL",
         };
         let problem = Mailer::files(&bad, std::env::temp_dir(), "outbound")
             .err()
             .unwrap();
         assert!(problem.contains("ORDER_EMAIL_FROM"), "{problem}");
+        let bad = Addresses {
+            to: "support",
+            settings: "CONTACT_EMAIL",
+            ..bad
+        };
+        let problem = Mailer::files(&bad, std::env::temp_dir(), "outbound")
+            .err()
+            .unwrap();
+        assert!(problem.contains("CONTACT_EMAIL_FROM"), "{problem}");
+    }
+
+    #[test]
+    fn a_message_goes_to_the_shop_and_replies_go_to_the_visitor() {
+        let folder = std::env::temp_dir().join(format!("shop-orders-test-{}", random_hex(4)));
+        let support = Addresses {
+            shop_name: "Aether & Allure",
+            from: "support@example.com",
+            to: "support@example.com",
+            reply_to: None,
+            settings: "CONTACT_EMAIL",
+        };
+        let mailer = Mailer::files(&support, folder.clone(), "outbound").unwrap();
+        let letter = Letter {
+            subject: "Question about my order".into(),
+            html: "<!DOCTYPE html><p>Message</p>".into(),
+            text: "Message\n".into(),
+        };
+        let visitor = Mailbox::new(
+            Some("Mira Ashwood".into()),
+            "mira@example.com".parse().unwrap(),
+        );
+        let message = mailer
+            .letter(&letter, "message-2611241152-ab12cd34", visitor)
+            .unwrap();
+        let text = String::from_utf8(message.formatted()).unwrap();
+        for header in [
+            // "Mira Ashwood via Aether & Allure", written the way email
+            // headers carry an "&".
+            "From: =?utf-8?b?TWlyYSBBc2h3b29kIHZpYSBBZXRoZXIgJiBBbGx1cmU=?= <support@example.com>\r\n",
+            "To: =?utf-8?b?QWV0aGVyICYgQWxsdXJl?= <support@example.com>\r\n",
+            "Reply-To: \"Mira Ashwood\" <mira@example.com>\r\n",
+            "Subject: Question about my order\r\n",
+            "X-PM-Message-Stream: outbound\r\n",
+            "X-PM-Tag: contact\r\n",
+            "Message-ID: <message-2611241152-ab12cd34@example.com>\r\n",
+            "Content-Type: multipart/alternative;",
+        ] {
+            assert!(text.contains(header), "missing {header:?} in\n{text}");
+        }
+        // No copy goes to the visitor: the shop is the only recipient.
+        assert!(!text.contains("Cc:"));
+        assert!(!text.contains("Bcc:"));
+        let envelope = message.envelope();
+        assert_eq!(
+            envelope.from().map(ToString::to_string).as_deref(),
+            Some("support@example.com")
+        );
+        let recipients: Vec<String> = envelope.to().iter().map(ToString::to_string).collect();
+        assert_eq!(recipients, ["support@example.com"]);
+
+        let block_on = |future| {
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap()
+                .block_on(future)
+        };
+        block_on(mailer.send(message, "message-1", &letter.html, &letter.text)).unwrap();
+        for extension in ["eml", "html", "txt"] {
+            assert!(folder.join(format!("message-1.{extension}")).exists());
+        }
+        std::fs::remove_dir_all(folder).unwrap();
     }
 
     #[test]
