@@ -205,7 +205,9 @@ pub fn email_problem(email: &str) -> Option<&'static str> {
         .then_some("Check your email address. It should look like name@example.com.")
 }
 
-fn looks_like_an_email(email: &str) -> bool {
+/// Whether an email address looks like one, with nothing else around it.
+/// The contact page's checks (src/message.rs) use it too.
+pub fn looks_like_an_email(email: &str) -> bool {
     let Some((local, domain)) = email.split_once('@') else {
         return false;
     };

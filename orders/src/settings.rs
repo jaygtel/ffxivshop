@@ -9,12 +9,13 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 pub const USAGE: &str = "\
-Emails the orders sent from the order panel, through Postmark.
+Emails the orders sent from the order panel, and the messages sent from the
+contact page, through Postmark.
 
 Usage: shop-orders [--listen ADDRESS] [--prices FILE] [--save-to FOLDER]
                    [--assets ADDRESS] [SHOP_TOML]
 
-  --listen ADDRESS   where to take orders (default 127.0.0.1:8081)
+  --listen ADDRESS   where to take orders and messages (default 127.0.0.1:8081)
   --prices FILE      the prices service's prices.json, if there is one
   --save-to FOLDER   save each email in FOLDER instead of sending it
   --assets ADDRESS   where the email's pictures and fonts come from
@@ -29,6 +30,10 @@ Settings, from the environment or .env (see .env.example):
   POSTMARK_SMTP_PORT      587 (the default) or 2525
   ORDERS_PER_HOUR         orders an hour from one visitor, or to one address (3)
   ORDERS_PER_DAY          orders a day for the whole shop (20)
+  CONTACT_EMAIL_FROM      where messages come from, e.g. support@your.domain
+  CONTACT_EMAIL_TO        the address messages go to
+  MESSAGES_PER_HOUR       messages an hour from one visitor, or one address (3)
+  MESSAGES_PER_DAY        messages a day for the whole site (20)
 ";
 
 pub struct Settings {
@@ -46,6 +51,11 @@ pub struct Settings {
     pub stream: String,
     pub per_hour: u32,
     pub per_day: u32,
+    /// The contact page's messages: where they come from and go to.
+    pub contact_from: Option<String>,
+    pub contact_to: Option<String>,
+    pub messages_per_hour: u32,
+    pub messages_per_day: u32,
 }
 
 /// Looks a setting up in the environment, then in the .env file's lines.
@@ -140,21 +150,45 @@ impl Settings {
                 .unwrap_or_else(|| "outbound".into()),
             per_hour: number("ORDERS_PER_HOUR", 3)?,
             per_day: number("ORDERS_PER_DAY", 20)?,
+            contact_from: lookup.get("CONTACT_EMAIL_FROM"),
+            contact_to: lookup.get("CONTACT_EMAIL_TO"),
+            messages_per_hour: number("MESSAGES_PER_HOUR", 3)?,
+            messages_per_day: number("MESSAGES_PER_DAY", 20)?,
         })
     }
 
-    /// The settings that sending needs and doesn't have. Saving to files
-    /// doesn't need the token.
+    /// The settings that sending orders needs and doesn't have. Saving to
+    /// files doesn't need the token.
     pub fn missing(&self) -> Vec<&'static str> {
+        self.missing_with(&self.from, "ORDER_EMAIL_FROM", &self.to, "ORDER_EMAIL_TO")
+    }
+
+    /// The same for sending the contact page's messages.
+    pub fn missing_for_messages(&self) -> Vec<&'static str> {
+        self.missing_with(
+            &self.contact_from,
+            "CONTACT_EMAIL_FROM",
+            &self.contact_to,
+            "CONTACT_EMAIL_TO",
+        )
+    }
+
+    fn missing_with(
+        &self,
+        from: &Option<String>,
+        from_name: &'static str,
+        to: &Option<String>,
+        to_name: &'static str,
+    ) -> Vec<&'static str> {
         let mut missing = Vec::new();
         if self.save_to.is_none() && self.token.is_none() {
             missing.push("POSTMARK_SERVER_TOKEN");
         }
-        if self.from.is_none() {
-            missing.push("ORDER_EMAIL_FROM");
+        if from.is_none() {
+            missing.push(from_name);
         }
-        if self.to.is_none() {
-            missing.push("ORDER_EMAIL_TO");
+        if to.is_none() {
+            missing.push(to_name);
         }
         missing
     }
@@ -188,11 +222,23 @@ mod tests {
         assert_eq!(settings.stream, "outbound");
         assert_eq!((settings.per_hour, settings.per_day), (3, 20));
         assert_eq!(
+            (settings.messages_per_hour, settings.messages_per_day),
+            (3, 20)
+        );
+        assert_eq!(
             settings.missing(),
             [
                 "POSTMARK_SERVER_TOKEN",
                 "ORDER_EMAIL_FROM",
                 "ORDER_EMAIL_TO"
+            ]
+        );
+        assert_eq!(
+            settings.missing_for_messages(),
+            [
+                "POSTMARK_SERVER_TOKEN",
+                "CONTACT_EMAIL_FROM",
+                "CONTACT_EMAIL_TO"
             ]
         );
     }
@@ -208,6 +254,9 @@ mod tests {
                 ("POSTMARK_SMTP_PORT", "2525"),
                 ("ORDERS_PER_DAY", "50"),
                 ("ORDER_EMAIL_REPLY_TO", ""),
+                ("CONTACT_EMAIL_FROM", "support@example.com"),
+                ("CONTACT_EMAIL_TO", "support@example.com"),
+                ("MESSAGES_PER_HOUR", "5"),
             ]),
         )
         .unwrap();
@@ -222,6 +271,32 @@ mod tests {
         assert_eq!(settings.per_day, 50);
         assert_eq!(settings.reply_to, None);
         assert!(settings.missing().is_empty());
+        assert_eq!(
+            settings.contact_from.as_deref(),
+            Some("support@example.com")
+        );
+        assert_eq!(settings.contact_to.as_deref(), Some("support@example.com"));
+        assert_eq!(
+            (settings.messages_per_hour, settings.messages_per_day),
+            (5, 20)
+        );
+        assert!(settings.missing_for_messages().is_empty());
+    }
+
+    #[test]
+    fn orders_and_messages_are_set_up_apart() {
+        // Messages only: orders aren't ready, but messages are.
+        let settings = Settings::read(
+            &[],
+            &lookup(&[
+                ("POSTMARK_SERVER_TOKEN", "secret"),
+                ("CONTACT_EMAIL_FROM", "support@example.com"),
+                ("CONTACT_EMAIL_TO", "support@example.com"),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(settings.missing(), ["ORDER_EMAIL_FROM", "ORDER_EMAIL_TO"]);
+        assert!(settings.missing_for_messages().is_empty());
     }
 
     #[test]
@@ -247,5 +322,7 @@ mod tests {
         assert!(Settings::read(&[], &lookup(&[("ORDERS_PER_HOUR", "lots")])).is_err());
         assert!(Settings::read(&[], &lookup(&[("ORDERS_PER_DAY", "0")])).is_err());
         assert!(Settings::read(&[], &lookup(&[("POSTMARK_SMTP_PORT", "70000")])).is_err());
+        assert!(Settings::read(&[], &lookup(&[("MESSAGES_PER_HOUR", "-1")])).is_err());
+        assert!(Settings::read(&[], &lookup(&[("MESSAGES_PER_DAY", "0")])).is_err());
     }
 }

@@ -12,8 +12,8 @@ publish = false
 
 [dependencies]
 leptos = { version = "0.8", features = ["csr"] }
-# The pages' addresses (/ and /shop), and moving between them without
-# reloading the site.
+# The pages' addresses (/, /shop and /contact), and moving between them
+# without reloading the site.
 leptos_router = "0.8"
 serde = { version = "1", features = ["derive"] }
 # Reads prices.json, the market prices the server writes (src/prices.rs).

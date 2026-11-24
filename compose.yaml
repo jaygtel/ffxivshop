@@ -1,6 +1,7 @@
 # Runs the site on your server, behind your Traefik, the prices service that
 # keeps its market prices up to date, and the orders service that emails the
-# orders sent with the order panel's Send by email.
+# orders sent with the order panel's Send by email, and the messages sent with
+# the contact page's form.
 #
 #   docker compose up -d --build
 #   cp deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
@@ -10,8 +11,8 @@
 # No ports are published on the server. The site joins the existing
 # traefik_proxy network, where Traefik reaches it by name through Docker's
 # DNS: http://aether-allure-site:8080. It also joins this project's own
-# network, where it passes orders on to the orders service, which nothing
-# else can reach.
+# network, where it passes orders and messages on to the orders service,
+# which nothing else can reach.
 
 name: aether-allure
 
@@ -91,9 +92,11 @@ services:
 
   # Emails each order sent with the order panel's Send by email through
   # Postmark, to you with a copy to the buyer, and tells the page its order
-  # number. The site's nginx passes the orders on to it. Its settings come
-  # from .env (see .env.example); until they're set, the order panel says
-  # sending by email isn't ready. See what it did: docker compose logs orders
+  # number. It also emails each message sent with the contact page's form to
+  # you, with replies going to whoever sent it. The site's nginx passes the
+  # orders and messages on to it. Its settings come from .env (see
+  # .env.example); until they're set, the order panel and the contact page
+  # say sending isn't ready. See what it did: docker compose logs orders
   orders:
     build:
       context: .
@@ -112,6 +115,10 @@ services:
       POSTMARK_SMTP_PORT: ${POSTMARK_SMTP_PORT:-587}
       ORDERS_PER_HOUR: ${ORDERS_PER_HOUR:-3}
       ORDERS_PER_DAY: ${ORDERS_PER_DAY:-20}
+      CONTACT_EMAIL_FROM: ${CONTACT_EMAIL_FROM:-}
+      CONTACT_EMAIL_TO: ${CONTACT_EMAIL_TO:-}
+      MESSAGES_PER_HOUR: ${MESSAGES_PER_HOUR:-3}
+      MESSAGES_PER_DAY: ${MESSAGES_PER_DAY:-20}
     # This week's market prices (read-only), so the receipt has the prices
     # the order panel showed.
     volumes:

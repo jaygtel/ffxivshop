@@ -3,16 +3,24 @@
 //! week's market prices, and emails a receipt through Postmark to the shop,
 //! with a copy to the buyer.
 //!
+//! The contact page sends it each message too (POST /api/contact). It checks
+//! the message and emails it through Postmark to the shop, with Reply-To set
+//! to the visitor, so replying answers them.
+//!
 //! On the server it runs in its own container next to the site, and the
-//! site's nginx passes orders on to it (see compose.yaml and
+//! site's nginx passes orders and messages on to it (see compose.yaml and
 //! deploy/nginx.conf). Run `shop-orders --help` for its options and
 //! settings.
 
 // The shop's own code, shared with the site, so the receipt prices and
-// checks an order exactly as the order panel does.
+// checks an order exactly as the order panel does, and a message is checked
+// exactly as the contact page checks it.
 #[allow(dead_code)]
 #[path = "../../src/basket.rs"]
 mod basket;
+#[allow(dead_code)]
+#[path = "../../src/message.rs"]
+mod message;
 #[allow(dead_code)]
 #[path = "../../src/model.rs"]
 mod model;
@@ -24,7 +32,9 @@ mod prices;
 mod vars;
 
 mod clock;
+mod letter;
 mod limits;
+mod look;
 mod mail;
 mod order;
 mod receipt;
@@ -40,6 +50,7 @@ use basket::{Answer, EmailOrder};
 use lettre::message::Mailbox;
 use limits::{Limits, Reached};
 use mail::{Addresses, Mailer};
+use message::{ContactMessage, Reply};
 use model::Shop;
 use settings::{Lookup, Settings};
 use std::net::SocketAddr;
@@ -53,9 +64,13 @@ struct Service {
     /// The prices service's prices.json, read for each order, as it changes
     /// every week.
     prices: Option<PathBuf>,
-    /// None when the settings for sending are missing.
+    /// None when the settings for sending orders are missing.
     mailer: Option<Mailer>,
     limits: Limits,
+    /// The same for the contact page's messages, which have limits of their
+    /// own.
+    messenger: Option<Mailer>,
+    message_limits: Limits,
     /// Where the email's pictures and fonts come from.
     assets: String,
 }
@@ -90,29 +105,36 @@ async fn main() {
         );
         None
     } else {
-        let addresses = Addresses {
-            shop_name: &shop.shop.name,
-            from: settings.from.as_deref().unwrap_or_default(),
-            to: settings.to.as_deref().unwrap_or_default(),
-            reply_to: settings.reply_to.as_deref(),
-        };
-        let made = match &settings.save_to {
-            Some(folder) => Mailer::files(&addresses, folder.clone(), &settings.stream),
-            None => Mailer::postmark(
-                &addresses,
-                settings.token.as_deref().unwrap_or_default(),
-                &settings.smtp_host,
-                settings.smtp_port,
-                &settings.stream,
-            ),
-        };
-        match made {
-            Ok(mailer) => Some(mailer),
-            Err(problem) => {
-                eprintln!("shop-orders: {problem}");
-                std::process::exit(1);
-            }
-        }
+        Some(make_mailer(
+            &settings,
+            &Addresses {
+                shop_name: &shop.shop.name,
+                from: settings.from.as_deref().unwrap_or_default(),
+                to: settings.to.as_deref().unwrap_or_default(),
+                reply_to: settings.reply_to.as_deref(),
+                settings: "ORDER_EMAIL",
+            },
+        ))
+    };
+    let missing = settings.missing_for_messages();
+    let messenger = if !missing.is_empty() {
+        println!(
+            "Messages from the contact page can't be emailed until these are set in .env: {}. Until then the contact page says so.",
+            missing.join(", ")
+        );
+        None
+    } else {
+        Some(make_mailer(
+            &settings,
+            &Addresses {
+                shop_name: &shop.shop.name,
+                from: settings.contact_from.as_deref().unwrap_or_default(),
+                to: settings.contact_to.as_deref().unwrap_or_default(),
+                // Replies go to whoever sent the message (see Mailer::letter).
+                reply_to: None,
+                settings: "CONTACT_EMAIL",
+            },
+        ))
     };
 
     let assets = settings
@@ -125,6 +147,8 @@ async fn main() {
         prices: settings.prices.clone(),
         mailer,
         limits: Limits::new(settings.per_hour, settings.per_day),
+        messenger,
+        message_limits: Limits::new(settings.messages_per_hour, settings.messages_per_day),
         assets,
     });
     let app = router(service.clone());
@@ -143,9 +167,22 @@ async fn main() {
         service
             .mailer
             .as_ref()
-            .map_or("but not sending them".to_string(), Mailer::describe),
+            .map_or("but not sending them".to_string(), |mailer| mailer
+                .describe("orders")),
         settings.per_hour,
         settings.per_day,
+    );
+    println!(
+        "Taking messages on {}{}, {}; at most {} an hour from one visitor or from one address, and {} a day.",
+        settings.listen,
+        message::SEND_ADDRESS,
+        service
+            .messenger
+            .as_ref()
+            .map_or("but not sending them".to_string(), |messenger| messenger
+                .describe("messages")),
+        settings.messages_per_hour,
+        settings.messages_per_day,
     );
     let served = axum::serve(
         listener,
@@ -159,12 +196,34 @@ async fn main() {
     }
 }
 
-/// The one address the service answers: the order panel's.
+/// The two addresses the service answers: the order panel's, and the
+/// contact page's.
 fn router(service: Arc<Service>) -> Router {
     Router::new()
         .route(basket::SEND_ADDRESS, post(take_order))
+        .route(message::SEND_ADDRESS, post(take_message))
         .layer(DefaultBodyLimit::max(16 * 1024))
         .with_state(service)
+}
+
+/// A mailer for `addresses`: one that sends through Postmark, or one that
+/// saves the emails in a folder (--save-to). A mistake in the settings stops
+/// the service.
+fn make_mailer(settings: &Settings, addresses: &Addresses) -> Mailer {
+    let made = match &settings.save_to {
+        Some(folder) => Mailer::files(addresses, folder.clone(), &settings.stream),
+        None => Mailer::postmark(
+            addresses,
+            settings.token.as_deref().unwrap_or_default(),
+            &settings.smtp_host,
+            settings.smtp_port,
+            &settings.stream,
+        ),
+    };
+    made.unwrap_or_else(|problem| {
+        eprintln!("shop-orders: {problem}");
+        std::process::exit(1);
+    })
 }
 
 /// Reads shop.toml, filling in its ${SHOP_…} values as build.rs does. The
@@ -374,7 +433,11 @@ async fn take_order(
         }
     };
     let sent = match mailer.message(&receipt, &number, buyer) {
-        Ok(message) => mailer.send(message, &number, &receipt).await,
+        Ok(message) => {
+            mailer
+                .send(message, &number, &receipt.html, &receipt.text)
+                .await
+        }
         Err(problem) => Err(problem),
     };
     match sent {
@@ -404,6 +467,127 @@ async fn take_order(
                 format!(
                     "Your order could not be sent just now. Please try again in a few minutes.{otherwise}"
                 ),
+            )
+        }
+    }
+}
+
+fn not_sent(status: StatusCode, problem: &str) -> (StatusCode, Json<Reply>) {
+    (
+        status,
+        Json(Reply {
+            sent: false,
+            problem: Some(problem.to_string()),
+        }),
+    )
+}
+
+/// A name for a message, for its Message-ID and the service's log: the
+/// UK date and time it was sent, and random letters and digits, such as
+/// message-20261124-1152-3fa9c1d2.
+fn message_reference(now: &clock::UkTime) -> String {
+    format!(
+        "message-{:04}{:02}{:02}-{:02}{:02}-{}",
+        now.year,
+        now.month,
+        now.day,
+        now.hour,
+        now.minute,
+        mail::random_hex(4)
+    )
+}
+
+async fn take_message(
+    State(service): State<Arc<Service>>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    sent: Result<Json<ContactMessage>, JsonRejection>,
+) -> (StatusCode, Json<Reply>) {
+    let Ok(Json(sent)) = sent else {
+        return not_sent(
+            StatusCode::BAD_REQUEST,
+            "Your message could not be read. Reload the page and try again.",
+        );
+    };
+    let Some(messenger) = &service.messenger else {
+        return not_sent(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Sending messages is not ready yet.",
+        );
+    };
+    if !sent.website.trim().is_empty() {
+        println!(
+            "Turned a message away: the hidden box was filled in, so it's probably from a bot"
+        );
+        return not_sent(StatusCode::BAD_REQUEST, "Your message could not be sent.");
+    }
+    if let Some((_, problem)) = sent.problem() {
+        return not_sent(StatusCode::BAD_REQUEST, problem);
+    }
+    let message = sent.tidied();
+
+    let from = visitor(&headers, peer);
+    let place = match service
+        .message_limits
+        .take(&from, &message.email, Instant::now())
+    {
+        Ok(place) => place,
+        Err(Reached::Hour) => {
+            println!(
+                "Turned a message away: too many in the last hour from one visitor or from one address"
+            );
+            return not_sent(
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many messages have been sent from here, or from this email address, in the last hour. Please try again later.",
+            );
+        }
+        Err(Reached::Day) => {
+            println!("Turned a message away: the site has taken today's most messages");
+            return not_sent(
+                StatusCode::TOO_MANY_REQUESTS,
+                "The shop has had a lot of messages today. Please try again tomorrow.",
+            );
+        }
+    };
+
+    let now = clock::UkTime::at(clock::now());
+    let reference = message_reference(&now);
+    let letter = letter::write(&service.shop, &message, &now.written(), &service.assets);
+    let reply_to = match message.email.parse() {
+        Ok(address) => Mailbox::new(Some(message.name.clone()), address),
+        Err(_) => {
+            service.message_limits.give_back(place);
+            return not_sent(
+                StatusCode::BAD_REQUEST,
+                "Check your email address. It should look like name@example.com.",
+            );
+        }
+    };
+    let sent = match messenger.letter(&letter, &reference, reply_to) {
+        Ok(email) => {
+            messenger
+                .send(email, &reference, &letter.html, &letter.text)
+                .await
+        }
+        Err(problem) => Err(problem),
+    };
+    match sent {
+        Ok(()) => {
+            println!("{} {reference} from the contact page", messenger.done());
+            (
+                StatusCode::OK,
+                Json(Reply {
+                    sent: true,
+                    problem: None,
+                }),
+            )
+        }
+        Err(problem) => {
+            service.message_limits.give_back(place);
+            println!("Could not send {reference}: {problem}");
+            not_sent(
+                StatusCode::BAD_GATEWAY,
+                "Your message could not be sent just now. Please try again in a few minutes.",
             )
         }
     }
@@ -454,6 +638,19 @@ mod tests {
     use tower::ServiceExt;
 
     fn service(mailer: Option<Mailer>, per_hour: u32) -> Arc<Service> {
+        service_with(mailer, None, per_hour)
+    }
+
+    /// A service for the contact page's messages only.
+    fn messaging(messenger: Option<Mailer>, per_hour: u32) -> Arc<Service> {
+        service_with(None, messenger, per_hour)
+    }
+
+    fn service_with(
+        mailer: Option<Mailer>,
+        messenger: Option<Mailer>,
+        per_hour: u32,
+    ) -> Arc<Service> {
         Arc::new(Service {
             shop: load_shop(&PathBuf::from(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -463,6 +660,8 @@ mod tests {
             prices: None,
             mailer,
             limits: Limits::new(per_hour, 20),
+            messenger,
+            message_limits: Limits::new(per_hour, 20),
             assets: "https://aetherandallure.com".into(),
         })
     }
@@ -473,6 +672,18 @@ mod tests {
             from: "shop@example.com",
             to: "shop@example.com",
             reply_to: None,
+            settings: "ORDER_EMAIL",
+        };
+        Mailer::files(&addresses, folder.to_path_buf(), "outbound").unwrap()
+    }
+
+    fn saving_messages(folder: &std::path::Path) -> Mailer {
+        let addresses = Addresses {
+            shop_name: "Aether & Allure",
+            from: "support@example.com",
+            to: "support@example.com",
+            reply_to: None,
+            settings: "CONTACT_EMAIL",
         };
         Mailer::files(&addresses, folder.to_path_buf(), "outbound").unwrap()
     }
@@ -496,8 +707,37 @@ mod tests {
         (status, serde_json::from_slice(&bytes).unwrap())
     }
 
+    /// Sends `body` to the service as the contact page would, from `from`.
+    async fn send_message(service: &Arc<Service>, body: &str, from: &str) -> (StatusCode, Reply) {
+        let mut request = Request::post(message::SEND_ADDRESS)
+            .header("content-type", "application/json")
+            .header("cf-connecting-ip", from)
+            .body(Body::from(body.to_string()))
+            .unwrap();
+        let peer: SocketAddr = "172.18.0.3:40000".parse().unwrap();
+        request.extensions_mut().insert(ConnectInfo(peer));
+        let response = router(service.clone()).oneshot(request).await.unwrap();
+        let status = response.status();
+        let bytes = to_bytes(response.into_body(), 64 * 1024).await.unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
     fn folder() -> PathBuf {
         std::env::temp_dir().join(format!("shop-orders-service-{}", mail::random_hex(4)))
+    }
+
+    const MESSAGE: &str = r#"{"name":" Mira Ashwood ","email":"mira@example.com",
+        "subject":"Question about my order","message":"Hello!\n\nCan you craft a rapier?",
+        "website":""}"#;
+
+    /// The emails saved in `folder`, by name.
+    fn saved(folder: &std::path::Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(folder)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
     }
 
     #[tokio::test]
@@ -562,6 +802,125 @@ mod tests {
             words,
             "Sending orders by email is not ready yet. Or copy it for Discord."
         );
+    }
+
+    #[tokio::test]
+    async fn a_message_is_emailed_with_replies_to_the_visitor() {
+        let folder = folder();
+        let service = messaging(Some(saving_messages(&folder)), 3);
+        let (status, reply) = send_message(&service, MESSAGE, "203.0.113.7").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            reply,
+            Reply {
+                sent: true,
+                problem: None
+            }
+        );
+        let names = saved(&folder);
+        assert_eq!(names.len(), 3, "{names:?}");
+        let eml = names.iter().find(|name| name.ends_with(".eml")).unwrap();
+        assert!(eml.starts_with("message-"), "{eml}");
+        let email = std::fs::read_to_string(folder.join(eml)).unwrap();
+        for header in [
+            "<support@example.com>\r\nTo: ",
+            "Reply-To: \"Mira Ashwood\" <mira@example.com>\r\n",
+            "Subject: Question about my order\r\n",
+            "X-PM-Tag: contact\r\n",
+        ] {
+            assert!(email.contains(header), "missing {header:?} in\n{email}");
+        }
+        assert!(!email.contains("Cc:"));
+        let text = std::fs::read_to_string(folder.join(eml.replace(".eml", ".txt"))).unwrap();
+        assert!(
+            text.contains("MESSAGE\n  Hello!\n\n  Can you craft a rapier?\n"),
+            "{text}"
+        );
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[tokio::test]
+    async fn bots_and_broken_messages_are_turned_away() {
+        let folder = folder();
+        let service = messaging(Some(saving_messages(&folder)), 3);
+        let trap = MESSAGE.replace(r#""website":"""#, r#""website":"https://spam.example""#);
+        let (status, reply) = send_message(&service, &trap, "203.0.113.7").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            reply.problem.as_deref(),
+            Some("Your message could not be sent.")
+        );
+        let (status, reply) = send_message(&service, "{not json", "203.0.113.7").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(
+            reply
+                .problem
+                .unwrap()
+                .starts_with("Your message could not be read.")
+        );
+        let nameless = MESSAGE.replace(" Mira Ashwood ", " ");
+        let (status, reply) = send_message(&service, &nameless, "203.0.113.7").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(reply.problem.as_deref(), Some("Enter your name."));
+        assert!(!reply.sent);
+        // Nothing was sent, and nothing counted towards the limits.
+        assert!(saved(&folder).is_empty());
+        assert_eq!(
+            send_message(&service, MESSAGE, "203.0.113.7").await.0,
+            StatusCode::OK
+        );
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[tokio::test]
+    async fn messages_have_limits_of_their_own() {
+        let folder = folder();
+        let service = service_with(Some(saving(&folder)), Some(saving_messages(&folder)), 1);
+        assert_eq!(
+            send_message(&service, MESSAGE, "203.0.113.7").await.0,
+            StatusCode::OK
+        );
+        // Another visitor, but the same address to reply to.
+        let (status, reply) = send_message(&service, MESSAGE, "198.51.100.4").await;
+        assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+        assert!(reply.problem.unwrap().contains("in the last hour"));
+        // The first visitor again, with another address.
+        let other = MESSAGE.replace("mira@example.com", "mira.ashwood@example.com");
+        assert_eq!(
+            send_message(&service, &other, "203.0.113.7").await.0,
+            StatusCode::TOO_MANY_REQUESTS
+        );
+        // Orders are counted apart from messages.
+        assert_eq!(send(&service, ORDER, "203.0.113.7").await.0, StatusCode::OK);
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[tokio::test]
+    async fn without_its_settings_the_contact_page_says_so() {
+        // Orders can be ready while messages aren't.
+        let folder = folder();
+        let service = service(Some(saving(&folder)), 3);
+        let (status, reply) = send_message(&service, MESSAGE, "203.0.113.7").await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            reply.problem.as_deref(),
+            Some("Sending messages is not ready yet.")
+        );
+        std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn message_references_read_easily() {
+        let now = clock::UkTime {
+            year: 2026,
+            month: 11,
+            day: 24,
+            hour: 9,
+            minute: 5,
+        };
+        let reference = message_reference(&now);
+        assert_eq!(&reference[..22], "message-20261124-0905-");
+        assert_eq!(reference.len(), 30);
     }
 
     #[test]

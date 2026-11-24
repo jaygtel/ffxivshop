@@ -265,9 +265,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # What also runs on the server: the orders service. It takes the orders sent
 # with the order panel's Send by email, which the site's nginx passes on to it
 # (see deploy/nginx.conf), and emails each one through Postmark, to you with a
-# copy to the buyer. Its settings come from .env through compose.yaml. It runs
-# as an unprivileged user and only reaches out to Postmark. It needs no CA
-# certificates from Debian: it carries its own.
+# copy to the buyer. It takes the messages sent with the contact page's form
+# the same way, and emails them to you. Its settings come from .env through
+# compose.yaml. It runs as an unprivileged user and only reaches out to
+# Postmark. It needs no CA certificates from Debian: it carries its own.
 FROM debian:${DEBIAN_RELEASE}-slim AS orders
 
 RUN set -eux; \

@@ -5,6 +5,7 @@ mod app;
 mod basket;
 mod browser;
 mod components;
+mod message;
 mod model;
 mod order;
 mod pages;

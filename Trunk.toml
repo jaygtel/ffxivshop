@@ -2,8 +2,8 @@
 target = "index.html"
 dist = "dist"
 # Relative links to the site's files, so it works on any domain. Its pages
-# have their own addresses (/ and /shop), so it's served from the top of the
-# domain, not from a folder.
+# have their own addresses (/, /shop and /contact), so it's served from the
+# top of the domain, not from a folder.
 public_url = "./"
 
 [serve]
@@ -13,13 +13,17 @@ port = 8080
 # trunk serve rebuilds the site and reloads the page when a file changes,
 # except for files matching these patterns ("target" on its own would not
 # match the files inside it). The orders service's "save emails to files"
-# task saves each order in target/emails, so without this, every order sent
-# would reload the page and take away the note that it was sent.
+# task saves each order and message in target/emails, so without this, every
+# one sent would reload the page and take away the note that it was sent.
 ignore = ["target/**"]
 
-# trunk serve passes the order panel's Send by email on to the orders service
-# on your computer, as nginx does on the server. Start it with the "orders
-# service: save emails to files" task; without it, Send by email says the
-# order could not be sent.
+# trunk serve passes the order panel's Send by email, and the contact page's
+# form, on to the orders service on your computer, as nginx does on the
+# server. Start it with the "orders service: save emails to files" task;
+# without it, Send by email says the order could not be sent, and the contact
+# page says the same of the message.
 [[proxy]]
 backend = "http://127.0.0.1:8081/api/order"
+
+[[proxy]]
+backend = "http://127.0.0.1:8081/api/contact"
