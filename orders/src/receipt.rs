@@ -12,7 +12,7 @@
 //! uses similar ones.
 //!
 //! Those pictures are Aether & Allure artwork: all rights reserved, and not
-//! covered by the BSD licence (see NOTICE.md).
+//! covered by the BSD licence (see docs/NOTICE.md).
 
 use crate::basket::MATS_RULE;
 use crate::model::{Shop, gil};
