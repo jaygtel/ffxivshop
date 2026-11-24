@@ -4,7 +4,8 @@
    over it, and the navigation across the top of every page. The homepage is
    the full-screen hero. On the shop page, the wares window leads and the
    order slip rides beside it while you browse; Request a craft and then
-   Collection sit side by side underneath. */
+   Collection sit side by side underneath. The contact page is one window,
+   holding its form. */
 
 /* Fonts, in assets/fonts with their licences beside them (this file is in
    assets/css, so they're at ../fonts):
@@ -2000,7 +2001,7 @@ select option {
 }
 
 /* The box only bots fill in: off the screen, and out of reach of the
-   keyboard and screen readers (see order_slip.rs). */
+   keyboard and screen readers (see order_slip.rs and pages/contact.rs). */
 .trap {
   position: absolute;
   left: -10000px;
@@ -2009,8 +2010,9 @@ select option {
   overflow: hidden;
 }
 
-/* Why an order wasn't sent. */
-.order-problem {
+/* Why an order, or a message from the contact page, wasn't sent. */
+.order-problem,
+.message-problem {
   margin: 0;
   padding: 6px 9px;
   border: 1px solid rgba(240, 143, 134, 0.55); /* --stop at 55% */
@@ -2218,6 +2220,74 @@ code.ch-value {
   font-family: inherit;
   font-weight: 500;
   user-select: all;
+}
+
+/* ----------------------------------------------------------------- contact */
+
+/* The contact page: the form's window with the footer under it, in a
+   narrower column than the shop's, as a form reads best at about this
+   width. */
+.contact-page {
+  max-width: 840px;
+}
+
+/* The form's boxes go by its own width (see .field-pair below). */
+.message-fields {
+  container: message / inline-size;
+  display: grid;
+  gap: 14px;
+}
+
+/* The name and email side by side, the same width; one above the other
+   where the form is narrow. */
+.message-fields .field-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container message (max-width: 479.98px) {
+  .message-fields .field-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.message-fields textarea {
+  min-height: 11.5em;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* How many characters are left, once there are only a few. */
+.message-left:empty {
+  display: none;
+}
+
+.message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A message that has just been sent. */
+.message-sent {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+/* Keyboard focus moves here once the message has gone; it isn't a control,
+   so it gets no focus ring. */
+.message-sent:focus {
+  outline: none;
+}
+
+.message-sent p {
+  margin: 0;
+}
+
+.message-to {
+  color: var(--gold-1);
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 /* ----------------------------------------------------------------- footer */
