@@ -1,6 +1,9 @@
 //! Who owns what: the site design, the shop in game, and the game itself.
+//! Also a link to the contact page, the one way to it from the homepage,
+//! which has no navigation bar.
 
 use crate::model::Shop;
+use crate::pages;
 use leptos::prelude::*;
 
 #[component]
@@ -34,7 +37,7 @@ pub fn Footer(shop: &'static Shop) -> impl IntoView {
                             <a href=address>{label}</a>
                             ". "
                         }
-                    })} "Built with Rust and WebAssembly."
+                    })} <a href=pages::CONTACT>"Contact"</a> ". Built with Rust and WebAssembly."
             </p>
         </footer>
     }
