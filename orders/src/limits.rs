@@ -1,7 +1,9 @@
 //! Limits that stop the order form being used to send lots of email: so
 //! many orders an hour from one visitor, and to one email address, and so
-//! many a day for the whole shop. They're kept in memory, so they start
-//! again whenever the service restarts.
+//! many a day for the whole shop. The contact page's messages have limits of
+//! their own, kept the same way, with the visitor's address in place of the
+//! buyer's. They're kept in memory, so they start again whenever the service
+//! restarts.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
