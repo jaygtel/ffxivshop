@@ -3,10 +3,15 @@
 # orders sent with the order panel's Send by email, and the messages sent with
 # the contact page's form.
 #
-#   docker compose up -d --build
-#   cp deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
+# On the server, deploy/deploy.sh runs this for you, from a published release:
 #
-# After pulling changes from GitHub, run the same `up` command again.
+#   ./deploy.sh v1.2.0
+#   cp releases/v1.2.0/deploy/traefik/aether-allure.yml <your Traefik dynamic config folder>/
+#
+# It never runs from a copy of the repository (see Hosting on your server in
+# the wiki). Each release's images are tagged with its version, which
+# deploy.sh passes in as RELEASE; on your own computer, where RELEASE isn't
+# set, `docker compose up -d --build` tags them `dev`.
 #
 # No ports are published on the server. The site joins the existing
 # traefik_proxy network, where Traefik reaches it by name through Docker's
@@ -27,7 +32,7 @@ services:
       args:
         SHOP_DISCORD: ${SHOP_DISCORD:-}
         SHOP_EMAIL: ${SHOP_EMAIL:-}
-    image: aether-allure-site:latest
+    image: aether-allure-site:${RELEASE:-dev}
     # The name Traefik uses to reach it (see deploy/traefik/aether-allure.yml).
     container_name: aether-allure-site
     restart: unless-stopped
@@ -66,7 +71,7 @@ services:
     build:
       context: .
       target: prices
-    image: aether-allure-prices:latest
+    image: aether-allure-prices:${RELEASE:-dev}
     container_name: aether-allure-prices
     command: ["prices", "--refresh", "--json", "/data/prices.json", "--every-days", "7", "/app/shop.toml"]
     restart: unless-stopped
@@ -101,7 +106,7 @@ services:
     build:
       context: .
       target: orders
-    image: aether-allure-orders:latest
+    image: aether-allure-orders:${RELEASE:-dev}
     container_name: aether-allure-orders
     restart: unless-stopped
     # Passes on the stop signal, so it stops straight away.
