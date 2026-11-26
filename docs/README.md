@@ -31,12 +31,14 @@ How to edit the shop, work on the site and run it on your server is in the
 - [Running it without the container][]: installing Rust and Trunk yourself
 - [Making changes][]: branches, pull requests and merging into `main`
 - [Build check][]: the check GitHub runs on every pull request into `main`
+- [Keeping up to date][]: Dependabot's pull requests, security alerts and the weekly versions check
 - [Your own main branch][]: the git hook that guards `main` on your computer
 
 ### The server
 
 - [Hosting on your server][]: what the server needs, and the first deploy
-- [Updating the site][]: putting merged changes live
+- [Releases][]: making a release, the only thing the server ever builds
+- [Updating the site][]: putting a new release live, and going back to an earlier one
 
 ### Reference
 
@@ -77,8 +79,10 @@ used under Square Enix's FINAL FANTASY XIV Materials Usage Policy
 [Running it without the container]: https://github.com/jaygtel/ffxivshop/wiki/Running-it-without-the-container
 [Making changes]: https://github.com/jaygtel/ffxivshop/wiki/Making-changes
 [Build check]: https://github.com/jaygtel/ffxivshop/wiki/Build-check
+[Keeping up to date]: https://github.com/jaygtel/ffxivshop/wiki/Keeping-up-to-date
 [Your own main branch]: https://github.com/jaygtel/ffxivshop/wiki/Your-own-main-branch
 [Hosting on your server]: https://github.com/jaygtel/ffxivshop/wiki/Hosting-on-your-server
+[Releases]: https://github.com/jaygtel/ffxivshop/wiki/Releases
 [Updating the site]: https://github.com/jaygtel/ffxivshop/wiki/Updating-the-site
 [Site design]: https://github.com/jaygtel/ffxivshop/wiki/Site-design
 [Assets]: https://github.com/jaygtel/ffxivshop/wiki/Assets
