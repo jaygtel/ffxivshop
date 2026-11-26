@@ -2,7 +2,7 @@
 # container, GitHub Actions and your own computer all use the same version.
 # The dev container's Dockerfile installs whatever is listed here.
 [toolchain]
-channel = "1.97.0"
+channel = "1.100.0"
 components = ["rustfmt", "clippy", "rust-analyzer", "rust-src"]
 targets = ["wasm32-unknown-unknown"]
 profile = "minimal"

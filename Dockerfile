@@ -42,7 +42,7 @@ RUN awk '/^name = "wasm-bindgen"$/ { getline; gsub(/^version = "|"$/, ""); print
     && grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+' /wasm-bindgen-version
 
 # =============================================================================
-FROM rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51 AS tools
+FROM rust:1.99.1-slim-trixie@sha256:f6c4a35d21dbb3c89d7a8d056c193e94fc09037f2b58dd858b09c39a47dd02d7 AS tools
 
 # Pinned tool versions and the SHA-256 of each download (the upstream release
 # checksums). The weekly versions check opens an issue when there are newer
@@ -218,7 +218,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # What runs on the server: nginx serving the finished site over HTTP on port
 # 8080, as an unprivileged user. Traefik sits in front and handles HTTPS with
 # your Cloudflare Origin certificate (see deploy/traefik/aether-allure.yml).
-FROM nginx/nginx-unprivileged:1.30.6-alpine-slim@sha256:30b5b66412019e6860fb900420758f664f770082d142b614db0d9afadfede1d3 AS site
+FROM nginx/nginx-unprivileged:1.31.9-alpine-slim@sha256:75e85a09b0f25bd46d49a9fd85589ffa70b0459c8ed5ee0dc6596fd642e1f829 AS site
 
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
