@@ -1,0 +1,117 @@
+# Makes a release from main. Run it from the Actions tab (Release → Run
+# workflow) once the version in Cargo.toml has been raised (see Releases in
+# the wiki).
+#
+# It checks the version, builds exactly that commit the same way as the Build
+# check, and makes a draft release with its notes and three files: the source
+# bundle the server builds from, deploy.sh, and their SHA-256 checksums
+# (SHA256SUMS). It also records on GitHub that the files were made here, from
+# this commit (an attestation). Publishing the draft on the Releases page
+# makes the release: GitHub creates its tag then, and from that moment the
+# release, its tag and its files can't change.
+#
+# Versions with a hyphen, like 1.2.0-rc.1, become pre-releases, which the
+# server's deploy.sh never deploys.
+
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Releases are only made from main: choose main under \"Use workflow from\"."
+          exit 1
+
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read and check the version
+        id: version
+        run: bash .github/scripts/release_version.sh
+
+  # The same builds as the Build check, for this commit.
+  build:
+    name: Build
+    needs: version
+    uses: ./.github/workflows/build.yml
+
+  release:
+    name: Draft the release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # To make the draft release and upload its files.
+      contents: write
+      # To record where the files were made.
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Everything in git at this commit, in a folder named after the release.
+      # .env and anything else outside git never goes in.
+      - name: Make the bundle
+        run: |
+          mkdir dist
+          git archive --format=tar.gz --prefix="aether-allure-$TAG/" \
+            --output "dist/aether-allure-$TAG.tar.gz" "$GITHUB_SHA"
+          cp deploy/deploy.sh dist/deploy.sh
+          cd dist
+          sha256sum -- "aether-allure-$TAG.tar.gz" deploy.sh > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Record where the files were made
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/aether-allure-*.tar.gz
+            dist/deploy.sh
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::$TAG already has a release or a draft on the Releases page. Publish or delete the draft first."
+            exit 1
+          fi
+          prerelease=()
+          if [ "$PRERELEASE" = true ]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
+            --target "$GITHUB_SHA" --title "$TAG" --generate-notes "${prerelease[@]}" \
+            "dist/aether-allure-$TAG.tar.gz" dist/deploy.sh dist/SHA256SUMS
+          {
+            echo "## $TAG is ready to publish"
+            echo
+            echo "Check its notes, then publish the draft on the [Releases page]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases)."
+          } >> "$GITHUB_STEP_SUMMARY"
