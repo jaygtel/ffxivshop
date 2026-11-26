@@ -35,7 +35,7 @@ pub struct Order {
     pub character: RwSignal<String>,
     /// The buyer's world.
     pub world: RwSignal<String>,
-    /// Where the copy of an emailed order goes.
+    /// Where replies to an emailed order go.
     pub email: RwSignal<String>,
     pub note: RwSignal<String>,
 }

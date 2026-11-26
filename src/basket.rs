@@ -111,7 +111,7 @@ pub struct EmailOrder {
     pub note: String,
     pub character: String,
     pub world: String,
-    /// Where their copy of the receipt goes.
+    /// Where replies to the order go. Nothing is sent to it automatically.
     pub email: String,
     /// A box that's hidden on the page, so people never fill it in. Bots
     /// that fill in every box do.
@@ -199,7 +199,7 @@ pub fn world_problem(world: &str) -> Option<&'static str> {
 pub fn email_problem(email: &str) -> Option<&'static str> {
     let email = email.trim();
     if email.is_empty() {
-        return Some("Enter your email address, so I can send you a copy.");
+        return Some("Enter your email address, so I can reply.");
     }
     (!looks_like_an_email(email))
         .then_some("Check your email address. It should look like name@example.com.")
@@ -232,9 +232,9 @@ pub fn looks_like_an_email(email: &str) -> bool {
             .is_some_and(|top| top.chars().count() >= 2 && top.chars().all(char::is_alphabetic))
 }
 
-/// What's wrong with the note, if anything. It goes in the copy emailed to
-/// whatever address the buyer gives, so it can't carry web links: otherwise
-/// anyone could send links to strangers from the shop's address.
+/// What's wrong with the note, if anything. It goes in the order email, and
+/// so in any reply to the address the buyer gave, so it can't carry web
+/// links: otherwise anyone could use the shop to pass links on.
 pub fn note_problem(note: &str) -> Option<&'static str> {
     let note = tidy(note);
     if note.chars().count() > NOTE_LIMIT {
