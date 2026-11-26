@@ -1,0 +1,63 @@
+# The versions check: every Monday, looks for newer versions of what
+# Dependabot can't update by itself (.github/scripts/check_versions.py says
+# what that is). If it finds any, it opens an issue saying what to change,
+# with the new checksums, or updates the one that's already open. Once
+# everything is up to date again, it closes that issue.
+#
+# It only reads the code, and needs no secrets. Run it by hand from the
+# Actions tab with "Run workflow".
+
+name: Versions check
+
+on:
+  schedule:
+    # Mondays at 06:30 UTC, after Dependabot's own Monday check.
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: versions-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Look for newer versions
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/check_versions.py report.md
+
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOUND: ${{ steps.check.outputs.found }}
+        run: |
+          title="Newer versions to update by hand"
+          number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$title\" in:title" --json number,title \
+            --jq "map(select(.title == \"$title\")) | first | .number // empty")"
+          if [ "$FOUND" = "true" ]; then
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file report.md
+              echo "Updated #$number" >> "$GITHUB_STEP_SUMMARY"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+                --body-file report.md --label "area: tooling" --assignee jaygtel
+            fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" \
+              --comment "Everything pinned by hand is up to date again."
+          fi

@@ -1,6 +1,6 @@
 [package]
 name = "ffxiv-shop"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
 rust-version = "1.88"
 description = "An FFXIV crafting shop page, written in Rust and compiled to WebAssembly."
@@ -57,6 +57,13 @@ toml = { version = "1", default-features = false, features = ["std", "parse", "s
 
 [workspace]
 members = ["tools", "orders"]
+
+# One version for the site, shop-tools and the orders service: the version of
+# each release. Raise it in a pull request before making a release (see
+# Releases in the wiki), and run `cargo update --workspace` so Cargo.lock
+# matches.
+[workspace.package]
+version = "0.1.0"
 
 [profile.release]
 opt-level = "z"

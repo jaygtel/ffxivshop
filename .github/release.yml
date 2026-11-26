@@ -1,0 +1,35 @@
+# How GitHub sorts the pull requests in a release's notes (the Release
+# workflow asks for them with --generate-notes). Each pull request goes under
+# the first heading one of its labels matches; the rest go under Other
+# changes. You can edit the notes on the draft before publishing it.
+
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: Fixes
+      labels:
+        - bug
+    - title: New and improved
+      labels:
+        - enhancement
+    - title: Accessibility
+      labels:
+        - accessibility
+    - title: Listings and wording
+      labels:
+        - listings
+        - wording
+    - title: Updates and tooling
+      labels:
+        - "area: tooling"
+        - "area: hosting"
+    - title: Docs
+      labels:
+        - documentation
+    - title: Other changes
+      labels:
+        - "*"
