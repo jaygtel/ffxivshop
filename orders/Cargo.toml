@@ -3,7 +3,7 @@ name = "shop-orders"
 version.workspace = true
 edition = "2024"
 rust-version = "1.88"
-description = "Emails the orders sent from the shop's order panel, with a copy to the buyer, and the messages sent from its contact page, through Postmark."
+description = "Emails the shop the orders sent from its order panel and the messages sent from its contact page, through Postmark."
 # The code only. The emails it sends link to Aether & Allure artwork
 # (assets/img/email), which is all rights reserved: see docs/NOTICE.md.
 license = "BSD-3-Clause"
