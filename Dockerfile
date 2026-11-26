@@ -1,5 +1,6 @@
 # Aether & Allure: one Dockerfile for development and for the server.
 #
+#   wasm-bindgen-version   the wasm-bindgen version in Cargo.lock, on its own
 #   tools        Rust (from rust-toolchain.toml), Trunk, wasm-bindgen and wasm-opt
 #   dev          the dev container Zed opens: tools + git, leptosfmt and a user account
 #   build        compiles the site with `trunk build --release`
@@ -11,36 +12,44 @@
 #   orders       what also runs on the server: the orders service, emailing
 #                the orders sent with the order panel's Send by email
 #
-# On the server, `docker compose up -d --build` builds and runs `site`,
-# `prices` and `orders` (see compose.yaml). Zed builds `dev` (see
+# On the server, deploy/deploy.sh builds and runs `site`, `prices` and
+# `orders` from a published release (see compose.yaml). Zed builds `dev` (see
 # .devcontainer/devcontainer.json).
 # Requires BuildKit, which Docker uses by default.
 #
 # Nothing secret is needed to build, and .dockerignore keeps .env out of the
 # build, so no image ever contains your settings. The orders service's
 # Postmark token reaches only its running container (see compose.yaml).
-
-# Only bootstraps rustup; the toolchain that's used comes from
-# rust-toolchain.toml. Keep the two equal so Rust isn't downloaded twice.
-ARG RUST_VERSION=1.97.0
-ARG NGINX_VERSION=1.30.6
-# The Debian release under Rust and under the prices image, kept the same so
-# shop-tools runs where it was built. It must be trixie or newer: Trunk's
-# prebuilt binary needs glibc 2.39 or newer.
-ARG DEBIAN_RELEASE=trixie
+#
+# The base images are written out in full and pinned by digest, so a release
+# always builds from exactly the same ones. Dependabot keeps them up to date
+# (see .github/dependabot.yml), in the same pull request as the Rust version
+# in rust-toolchain.toml, which the Rust image should match so Rust isn't
+# downloaded twice. Debian and Alpine security fixes arrive the same way, as
+# new digests. The Debian release (trixie) is the same under Rust and under
+# the prices and orders images, so shop-tools runs where it was built. It must
+# be trixie or newer: Trunk's prebuilt binary needs glibc 2.39 or newer.
 
 # =============================================================================
-FROM rust:${RUST_VERSION}-slim-${DEBIAN_RELEASE} AS tools
+# Reads the wasm-bindgen version from Cargo.lock in a stage of its own, so
+# `tools` only builds wasm-bindgen again when that version changes, not
+# whenever Cargo.lock does.
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0 AS wasm-bindgen-version
+
+COPY Cargo.lock /tmp/Cargo.lock
+RUN awk '/^name = "wasm-bindgen"$/ { getline; gsub(/^version = "|"$/, ""); print; exit }' \
+        /tmp/Cargo.lock > /wasm-bindgen-version \
+    && grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+' /wasm-bindgen-version
+
+# =============================================================================
+FROM rust:1.97.0-slim-trixie@sha256:686a437ead83701e8f871e66e838c3ec55f46b5fc235b025756396ac823bdc51 AS tools
 
 # Pinned tool versions and the SHA-256 of each download (the upstream release
-# checksums). wasm-bindgen must match the version in Cargo.lock: after
-# `cargo update` changes it, update WASM_BINDGEN_* here too.
+# checksums). The weekly versions check opens an issue when there are newer
+# ones, with their checksums (see .github/workflows/versions.yml).
 ARG TRUNK_VERSION=0.22.1
 ARG TRUNK_SHA256_AMD64=2ab8d548fd5ed9cda50906f61fd8654204e7893bd52ebbfd90533862b7d71ee1
 ARG TRUNK_SHA256_ARM64=b4017d1e0bfcffb4f4bee2be37c48def21e6e6896c3d0f503c43c42f714e57ea
-ARG WASM_BINDGEN_VERSION=0.2.130
-ARG WASM_BINDGEN_SHA256_AMD64=9687f3bb551b9f66f37ed32a40d7913a00f7962db653054e56857bc306c3227f
-ARG WASM_BINDGEN_SHA256_ARM64=cc8dd8e90aa9111758168d30c63a14b7f0276997d9d60d3e160a1fb5e7d3b919
 ARG BINARYEN_VERSION=131
 ARG BINARYEN_SHA256_AMD64=b5bf1f0eaf17c63ee588ff7a5954dc8f6ce2c26989051c66f24dfe9ece3e46db
 ARG BINARYEN_SHA256_ARM64=ba991f677edd9a21d2bc96c0144bc8ac5b112d4d98a3eb266e075e22e557df2a
@@ -68,23 +77,19 @@ RUN set -eux; \
     rm -rf /tmp/toolchain; \
     chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}"
 
-# Trunk, wasm-bindgen and wasm-opt: prebuilt and checksum-verified, so builds
-# never download tools.
+# Trunk and wasm-opt: prebuilt and checksum-verified, so builds never
+# download tools.
 RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     case "$arch" in \
         amd64) \
             cpu=x86_64; \
             trunk_sha="${TRUNK_SHA256_AMD64}"; \
-            bindgen_target=x86_64-unknown-linux-musl; \
-            bindgen_sha="${WASM_BINDGEN_SHA256_AMD64}"; \
             binaryen_sha="${BINARYEN_SHA256_AMD64}"; \
             ;; \
         arm64) \
             cpu=aarch64; \
             trunk_sha="${TRUNK_SHA256_ARM64}"; \
-            bindgen_target=aarch64-unknown-linux-gnu; \
-            bindgen_sha="${WASM_BINDGEN_SHA256_ARM64}"; \
             binaryen_sha="${BINARYEN_SHA256_ARM64}"; \
             ;; \
         *) \
@@ -103,12 +108,6 @@ RUN set -eux; \
         trunk.tar.gz "$trunk_sha"; \
     tar -xzf trunk.tar.gz -C /usr/local/bin trunk; \
     \
-    bindgen_dir="wasm-bindgen-${WASM_BINDGEN_VERSION}-${bindgen_target}"; \
-    download "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${WASM_BINDGEN_VERSION}/${bindgen_dir}.tar.gz" \
-        wasm-bindgen.tar.gz "$bindgen_sha"; \
-    tar -xzf wasm-bindgen.tar.gz --strip-components=1 -C /usr/local/bin \
-        "${bindgen_dir}/wasm-bindgen" "${bindgen_dir}/wasm-bindgen-test-runner"; \
-    \
     download "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-${cpu}-linux.tar.gz" \
         binaryen.tar.gz "$binaryen_sha"; \
     tar -xzf binaryen.tar.gz --strip-components=2 -C /usr/local/bin \
@@ -117,8 +116,23 @@ RUN set -eux; \
     cd /; \
     rm -rf "$work"; \
     trunk --version; \
-    wasm-bindgen --version; \
     wasm-opt --version
+
+# wasm-bindgen: whichever version Cargo.lock has, built from crates.io, where
+# cargo checks every download, with the exact dependencies in its own lock
+# file (--locked). Following Cargo.lock means updating the crate never needs
+# this file changing, and Trunk never has to fetch a matching tool while it
+# builds. Building it takes a few minutes, but only when its version changes.
+COPY --from=wasm-bindgen-version /wasm-bindgen-version /tmp/wasm-bindgen-version
+RUN set -eux; \
+    version="$(cat /tmp/wasm-bindgen-version)"; \
+    CARGO_TARGET_DIR=/tmp/wasm-bindgen-build \
+        cargo install --locked --root /usr/local "wasm-bindgen-cli@${version}"; \
+    rm -rf /tmp/wasm-bindgen-build /tmp/wasm-bindgen-version \
+        "${CARGO_HOME}/registry" "${CARGO_HOME}/git"; \
+    mkdir -p "${CARGO_HOME}/registry"; \
+    chmod -R a+w "${CARGO_HOME}"; \
+    wasm-bindgen --version
 
 # =============================================================================
 # The dev container. Every tool for working on the site lives here, so your
@@ -204,7 +218,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # What runs on the server: nginx serving the finished site over HTTP on port
 # 8080, as an unprivileged user. Traefik sits in front and handles HTTPS with
 # your Cloudflare Origin certificate (see deploy/traefik/aether-allure.yml).
-FROM nginx/nginx-unprivileged:${NGINX_VERSION}-alpine-slim AS site
+FROM nginx/nginx-unprivileged:1.30.6-alpine-slim@sha256:30b5b66412019e6860fb900420758f664f770082d142b614db0d9afadfede1d3 AS site
 
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -226,7 +240,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # compose.yaml), and writing them to /data/prices.json. The site reads that
 # file from the same volume (see deploy/nginx.conf). It runs as an
 # unprivileged user and only reaches out to Universalis and GitHub.
-FROM debian:${DEBIAN_RELEASE}-slim AS prices
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0 AS prices
 
 # CA certificates, so shop-tools can check the sites it talks to.
 RUN apt-get update \
@@ -269,7 +283,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # the same way, and emails them to you. Its settings come from .env through
 # compose.yaml. It runs as an unprivileged user and only reaches out to
 # Postmark. It needs no CA certificates from Debian: it carries its own.
-FROM debian:${DEBIAN_RELEASE}-slim AS orders
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0 AS orders
 
 RUN set -eux; \
     groupadd --system --gid 10002 orders; \
