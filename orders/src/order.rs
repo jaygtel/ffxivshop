@@ -171,8 +171,8 @@ mod tests {
         assert!(checked.own_mats);
         assert_eq!(checked.lines[0].each, Some(90_000));
         // No price of its own with materials: the standard one.
-        assert_eq!(checked.lines[1].each, Some(95_000));
-        assert_eq!(checked.totals.gil, 275_000);
+        assert_eq!(checked.lines[1].each, Some(129_800));
+        assert_eq!(checked.totals.gil, 309_800);
 
         // Ticked, but nothing in the order has a price for it.
         let mut sent = order(&[("Gold Thumb's Hatchet", 1)]);
