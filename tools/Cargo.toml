@@ -1,6 +1,6 @@
 [package]
 name = "shop-tools"
-version = "0.1.0"
+version.workspace = true
 edition = "2024"
 rust-version = "1.88"
 description = "Looks up FFXIV item IDs, Eorzea Database IDs, icons and market prices for shop.toml."
