@@ -1,5 +1,6 @@
-//! The receipt: the email the service sends for each order, to the shop with
-//! a copy to the buyer. It's an HTML email made to look like the order slip
+//! The receipt: the email the service sends to the shop for each order, with
+//! Reply-To set to the buyer, so a reply answers them and carries the receipt
+//! with it. It's an HTML email made to look like the order slip
 //! on the shop page, with a plain-text copy inside the same email for email
 //! programs that can't show HTML. How it's built, and what it shares with
 //! the contact page's messages (letter.rs), is in look.rs.
@@ -100,8 +101,9 @@ fn next_steps(shop: &Shop) -> [String; 3] {
     ]
 }
 
-const WHY_YOU_GOT_IT: &str = "You got this email because this address was used to send an order on";
-const IF_NOT_YOU: &str = "If you did not send it, you can ignore this email.";
+/// Where the order came from, before the website's name: the middle line of
+/// the footer.
+const SENT_FROM: &str = "Sent from the order panel on";
 
 // ---------------------------------------------------------------------------
 // HTML
@@ -323,9 +325,9 @@ fn slip(shop: &Shop, order: &Order, number: &str, placed: &str, assets: &str) ->
     look::slip(assets, "Order receipt", &esc(number), &sections)
 }
 
-/// Why the buyer got the email: the middle line of the footer.
-fn why_you_got_it(shop: &Shop) -> String {
-    format!("{WHY_YOU_GOT_IT} {}.", look::website(shop))
+/// Where the order came from: the middle line of the footer.
+fn sent_from(shop: &Shop) -> String {
+    format!("{SENT_FROM} {}.", look::website(shop))
 }
 
 fn html(
@@ -342,14 +344,7 @@ fn html(
          .col-2{padding-top:18px!important;}\
          .each{display:none!important;}\
          .each-under{display:block!important;max-height:none!important;overflow:visible!important;}";
-    let footer = look::footer(
-        shop,
-        &format!(
-            "{} {}",
-            esc(&why_you_got_it(shop)),
-            last_words_together(IF_NOT_YOU)
-        ),
-    );
+    let footer = look::footer(shop, &last_words_together(&esc(&sent_from(shop))));
     look::page(
         assets,
         shop,
@@ -422,10 +417,7 @@ fn text(shop: &Shop, order: &Order, number: &str, placed: &str) -> String {
         t.push_str(&wrap(&format!("{}. {step}", n + 1), WIDTH, "  ", "   "));
     }
 
-    t.push_str(&look::text_footer(
-        shop,
-        &format!("{} {IF_NOT_YOU}", why_you_got_it(shop)),
-    ));
+    t.push_str(&look::text_footer(shop, &sent_from(shop)));
     t
 }
 
@@ -529,7 +521,10 @@ mod tests {
             phones.contains(".foot{padding-left:24px!important;padding-right:24px!important;}")
         );
         // Its paragraphs never end with one word alone on a line.
-        assert!(html.contains("you can ignore this&nbsp;email.</div>"));
+        assert!(html.contains("Sent from the order panel on&nbsp;aetherandallure.com.</div>"));
+        // It goes to the shop only, so it says nothing to a stranger about
+        // ignoring it.
+        assert!(!html.contains("ignore this"));
         assert!(html.contains("All Rights&nbsp;Reserved.</div>"));
         assert!(!html.contains(".com//assets"));
         // Gmail cuts off emails over about 102 KB.
@@ -591,13 +586,7 @@ mod tests {
     #[test]
     fn its_words_are_plain_english() {
         let receipt = receipt(true, "", &MIXED);
-        for words in [
-            receipt.text.as_str(),
-            ASK_NOTE,
-            PAY,
-            WHY_YOU_GOT_IT,
-            IF_NOT_YOU,
-        ] {
+        for words in [receipt.text.as_str(), ASK_NOTE, PAY, SENT_FROM] {
             assert!(!words.contains("n't"), "no negative contractions: {words}");
         }
     }

@@ -21,7 +21,7 @@ const SENT_SHOWN: Duration = Duration::from_secs(10);
 #[derive(Clone)]
 struct Sent {
     number: String,
-    /// Where the copy went.
+    /// Where the reply will go.
     email: String,
 }
 
@@ -129,9 +129,11 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
     };
     let how_to_send = match (by_email, &contact.discord, &contact.email) {
         (true, Some(discord), _) => format!(
-            "Send by email sends your order to me, with a copy to you. Or copy it, then paste it into a Discord message to {discord}."
+            "Send by email sends your order to me. Or copy it, then paste it into a Discord message to {discord}."
         ),
-        (true, None, _) => "Send by email sends your order to me, with a copy to you. Or copy it to send it yourself.".to_string(),
+        (true, None, _) => {
+            "Send by email sends your order to me. Or copy it to send it yourself.".to_string()
+        }
         (false, Some(discord), _) => format!("Paste it into a Discord message to {discord}."),
         (false, None, Some(email)) => format!("Paste it into an email to {email}."),
         (false, None, None) => "Paste it into a message to me.".to_string(),
@@ -172,8 +174,8 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                                             "."
                                         </p>
                                         <p class="order-small">
-                                            "A copy is on its way to " {email}
-                                            ". I'll reply to confirm the price and when it'll be ready."
+                                            "I'll reply to " {email}
+                                            " to confirm the price and when it'll be ready."
                                         </p>
                                     </div>
                                 }
@@ -292,7 +294,7 @@ pub fn OrderSlip(shop: &'static Shop, order: Order) -> impl IntoView {
                         .then(|| {
                             view! {
                                 <div class="field">
-                                    <label for="order-email">"Your email, for your copy"</label>
+                                    <label for="order-email">"Your email, so I can reply"</label>
                                     <input
                                         id="order-email"
                                         type="email"

@@ -73,10 +73,10 @@ plot = 3                                 # 31-60 are in the subdivision
 [contact]
 note = "I usually reply within a few hours, most evenings and weekends (UK time)."
 tell = true                              # shows "/tell Sigrid Halvorsen@Sagittarius" with a copy button under Request a craft
-# The order panel's Send by email button. It emails the order to you, with a
-# copy to the buyer, through the orders service (see compose.yaml), which
-# needs its settings in .env (see .env.example). Set it to false to offer
-# only Copy for Discord.
+# The order panel's Send by email button. It emails the order to you through
+# the orders service (see compose.yaml), with replies going to the buyer. The
+# service needs its settings in .env (see .env.example). Set it to false to
+# offer only Copy for Discord.
 send_by_email = true
 friend_request = true
 message_book = true                      # visitors can leave a note in the estate's message book

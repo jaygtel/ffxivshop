@@ -21,7 +21,6 @@ const SEND_TIMEOUT: Duration = Duration::from_secs(20);
 pub struct Mailer {
     from: Mailbox,
     to: Mailbox,
-    reply_to: Option<Mailbox>,
     stream: String,
     way: Way,
 }
@@ -31,19 +30,19 @@ enum Way {
     Files(PathBuf),
 }
 
-/// Who an email is from, to, and where replies go.
+/// Who an email is from and to. Replies go to whoever sent the order or
+/// message (see Mailer::message and Mailer::letter).
 pub struct Addresses<'a> {
     pub shop_name: &'a str,
     pub from: &'a str,
     pub to: &'a str,
-    pub reply_to: Option<&'a str>,
     /// How the settings for these addresses start, to say which one is
     /// wrong: "ORDER_EMAIL" or "CONTACT_EMAIL".
     pub settings: &'a str,
 }
 
 impl Addresses<'_> {
-    fn mailboxes(&self) -> Result<(Mailbox, Mailbox, Option<Mailbox>), String> {
+    fn mailboxes(&self) -> Result<(Mailbox, Mailbox), String> {
         let mailbox = |setting: &str, address: &str| {
             address
                 .parse()
@@ -55,13 +54,7 @@ impl Addresses<'_> {
                     )
                 })
         };
-        Ok((
-            mailbox("FROM", self.from)?,
-            mailbox("TO", self.to)?,
-            self.reply_to
-                .map(|address| mailbox("REPLY_TO", address))
-                .transpose()?,
-        ))
+        Ok((mailbox("FROM", self.from)?, mailbox("TO", self.to)?))
     }
 }
 
@@ -74,7 +67,7 @@ impl Mailer {
         port: u16,
         stream: &str,
     ) -> Result<Mailer, String> {
-        let (from, to, reply_to) = addresses.mailboxes()?;
+        let (from, to) = addresses.mailboxes()?;
         let transport = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
             .map_err(|e| format!("can't use {host} for email: {e}"))?
             .port(port)
@@ -86,7 +79,6 @@ impl Mailer {
         Ok(Mailer {
             from,
             to,
-            reply_to,
             stream: stream.to_string(),
             way: Way::Postmark(Box::new(transport)),
         })
@@ -95,13 +87,12 @@ impl Mailer {
     /// Saves each email in `folder`, as the email itself (.eml) and its HTML
     /// and plain-text copies, instead of sending it.
     pub fn files(addresses: &Addresses, folder: PathBuf, stream: &str) -> Result<Mailer, String> {
-        let (from, to, reply_to) = addresses.mailboxes()?;
+        let (from, to) = addresses.mailboxes()?;
         std::fs::create_dir_all(&folder)
             .map_err(|e| format!("can't make the folder {}: {e}", folder.display()))?;
         Ok(Mailer {
             from,
             to,
-            reply_to,
             stream: stream.to_string(),
             way: Way::Files(folder),
         })
@@ -131,17 +122,19 @@ impl Mailer {
         }
     }
 
-    /// The email for an order: to the shop, with a copy to the buyer.
+    /// The email for an order: to the shop only, with Reply-To set to the
+    /// buyer, so replying answers them. The buyer gets no copy: the address
+    /// they gave hasn't been confirmed, so nothing is sent to it.
     pub fn message(
         &self,
         receipt: &Receipt,
         number: &str,
         buyer: Mailbox,
     ) -> Result<Message, String> {
-        let mut builder = Message::builder()
+        Message::builder()
             .from(self.from.clone())
             .to(self.to.clone())
-            .cc(buyer)
+            .reply_to(buyer)
             .subject(&receipt.subject)
             .date_now()
             .message_id(Some(format!(
@@ -150,11 +143,7 @@ impl Mailer {
                 self.from.email.domain()
             )))
             .header(MessageStream(self.stream.clone()))
-            .header(Tag("order".into()));
-        if let Some(reply_to) = &self.reply_to {
-            builder = builder.reply_to(reply_to.clone());
-        }
-        builder
+            .header(Tag("order".into()))
             .multipart(MultiPart::alternative_plain_html(
                 receipt.text.clone(),
                 receipt.html.clone(),
@@ -286,20 +275,19 @@ mod tests {
         }
     }
 
-    fn addresses(reply_to: Option<&'static str>) -> Addresses<'static> {
+    fn addresses() -> Addresses<'static> {
         Addresses {
             shop_name: "Aether & Allure",
             from: "shop@example.com",
             to: "orders@example.com",
-            reply_to,
             settings: "ORDER_EMAIL",
         }
     }
 
     #[test]
-    fn the_email_goes_to_the_shop_with_a_copy_to_the_buyer() {
+    fn the_email_goes_to_the_shop_and_replies_go_to_the_buyer() {
         let folder = std::env::temp_dir().join(format!("shop-orders-test-{}", random_hex(4)));
-        let mailer = Mailer::files(&addresses(None), folder.clone(), "outbound").unwrap();
+        let mailer = Mailer::files(&addresses(), folder.clone(), "outbound").unwrap();
         let buyer = Mailbox::new(
             Some("Mira Ashwood".into()),
             "mira@example.com".parse().unwrap(),
@@ -311,7 +299,7 @@ mod tests {
         for header in [
             &format!("From: {shop} <shop@example.com>\r\n"),
             &format!("To: {shop} <orders@example.com>\r\n"),
-            "Cc: \"Mira Ashwood\" <mira@example.com>\r\n",
+            "Reply-To: \"Mira Ashwood\" <mira@example.com>\r\n",
             "Subject: Order AA-2611-7K3Q from Mira Ashwood (Cerberus)\r\n",
             "X-PM-Message-Stream: outbound\r\n",
             "X-PM-Tag: order\r\n",
@@ -323,7 +311,11 @@ mod tests {
         ] {
             assert!(text.contains(header), "missing {header:?} in\n{text}");
         }
-        assert!(!text.contains("Reply-To"));
+        // Nothing goes to the buyer: the address they gave hasn't been
+        // confirmed.
+        assert!(!text.contains("\r\nCc:"), "{text}");
+        assert!(!text.contains("\r\nBcc:"), "{text}");
+        assert_eq!(text.matches("mira@example.com").count(), 1, "{text}");
         // The plain text comes first, so email programs that can show HTML
         // show the HTML.
         assert!(text.find("text/plain").unwrap() < text.find("text/html").unwrap());
@@ -350,31 +342,11 @@ mod tests {
     }
 
     #[test]
-    fn replies_can_go_elsewhere() {
-        let folder = std::env::temp_dir().join(format!("shop-orders-test-{}", random_hex(4)));
-        let mailer = Mailer::files(
-            &addresses(Some("replies@example.com")),
-            folder.clone(),
-            "outbound",
-        )
-        .unwrap();
-        let message = mailer
-            .message(&receipt(), "AA-1", "mira@example.com".parse().unwrap())
-            .unwrap();
-        let text = String::from_utf8(message.formatted()).unwrap();
-        assert!(
-            text.contains("Reply-To: =?utf-8?b?QWV0aGVyICYgQWxsdXJl?= <replies@example.com>\r\n")
-        );
-        std::fs::remove_dir_all(folder).unwrap();
-    }
-
-    #[test]
     fn bad_addresses_in_the_settings_are_explained() {
         let bad = Addresses {
             shop_name: "Aether & Allure",
             from: "shop at example",
             to: "orders@example.com",
-            reply_to: None,
             settings: "ORDER_EMAIL",
         };
         let problem = Mailer::files(&bad, std::env::temp_dir(), "outbound")
@@ -399,7 +371,6 @@ mod tests {
             shop_name: "Aether & Allure",
             from: "support@example.com",
             to: "support@example.com",
-            reply_to: None,
             settings: "CONTACT_EMAIL",
         };
         let mailer = Mailer::files(&support, folder.clone(), "outbound").unwrap();

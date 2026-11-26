@@ -1,7 +1,8 @@
 //! The orders service. The order panel's Send by email sends it each order
 //! (POST /api/order). It checks the order, prices it from shop.toml and this
 //! week's market prices, and emails a receipt through Postmark to the shop,
-//! with a copy to the buyer.
+//! with Reply-To set to the buyer, so replying answers them. The buyer gets
+//! no copy, as the address they gave hasn't been confirmed.
 //!
 //! The contact page sends it each message too (POST /api/contact). It checks
 //! the message and emails it through Postmark to the shop, with Reply-To set
@@ -111,7 +112,6 @@ async fn main() {
                 shop_name: &shop.shop.name,
                 from: settings.from.as_deref().unwrap_or_default(),
                 to: settings.to.as_deref().unwrap_or_default(),
-                reply_to: settings.reply_to.as_deref(),
                 settings: "ORDER_EMAIL",
             },
         ))
@@ -130,8 +130,6 @@ async fn main() {
                 shop_name: &shop.shop.name,
                 from: settings.contact_from.as_deref().unwrap_or_default(),
                 to: settings.contact_to.as_deref().unwrap_or_default(),
-                // Replies go to whoever sent the message (see Mailer::letter).
-                reply_to: None,
                 settings: "CONTACT_EMAIL",
             },
         ))
@@ -671,7 +669,6 @@ mod tests {
             shop_name: "Aether & Allure",
             from: "shop@example.com",
             to: "shop@example.com",
-            reply_to: None,
             settings: "ORDER_EMAIL",
         };
         Mailer::files(&addresses, folder.to_path_buf(), "outbound").unwrap()
@@ -682,7 +679,6 @@ mod tests {
             shop_name: "Aether & Allure",
             from: "support@example.com",
             to: "support@example.com",
-            reply_to: None,
             settings: "CONTACT_EMAIL",
         };
         Mailer::files(&addresses, folder.to_path_buf(), "outbound").unwrap()
@@ -749,7 +745,9 @@ mod tests {
         let number = answer.number.unwrap();
         assert!(number.starts_with("AA-"));
         let email = std::fs::read_to_string(folder.join(format!("{number}.eml"))).unwrap();
-        assert!(email.contains("Cc: \"Mira Ashwood\" <mira@example.com>"));
+        // To the shop only, with replies going to the buyer.
+        assert!(email.contains("Reply-To: \"Mira Ashwood\" <mira@example.com>"));
+        assert!(!email.contains("\r\nCc:"), "{email}");
         let text = std::fs::read_to_string(folder.join(format!("{number}.txt"))).unwrap();
         // Priced by the service, with the buyer's materials.
         assert!(text.contains("2 \u{d7} 90,000 gil = 180,000 gil"), "{text}");
@@ -787,7 +785,7 @@ mod tests {
         let service = service(Some(saving(&folder)), 1);
         assert_eq!(send(&service, ORDER, "203.0.113.7").await.0, StatusCode::OK);
         let (status, answer) = send(&service, ORDER, "198.51.100.4").await;
-        // Another visitor, but the same address for the copy.
+        // Another visitor, but the same email address.
         assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
         assert!(answer.problem.unwrap().contains("in the last hour"));
         std::fs::remove_dir_all(folder).unwrap();

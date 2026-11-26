@@ -26,9 +26,8 @@ Settings, from the environment or .env (see .env.example):
   POSTMARK_SERVER_TOKEN   Postmark server token (a secret)
   ORDER_EMAIL_FROM        the address orders come from, e.g. shop@your.domain
   ORDER_EMAIL_TO          the address orders go to
-  ORDER_EMAIL_REPLY_TO    where replies go (default: ORDER_EMAIL_FROM)
   POSTMARK_SMTP_PORT      587 (the default) or 2525
-  ORDERS_PER_HOUR         orders an hour from one visitor, or to one address (3)
+  ORDERS_PER_HOUR         orders an hour from one visitor, or one address (3)
   ORDERS_PER_DAY          orders a day for the whole shop (20)
   CONTACT_EMAIL_FROM      where messages come from, e.g. support@your.domain
   CONTACT_EMAIL_TO        the address messages go to
@@ -45,7 +44,6 @@ pub struct Settings {
     pub token: Option<String>,
     pub from: Option<String>,
     pub to: Option<String>,
-    pub reply_to: Option<String>,
     pub smtp_host: String,
     pub smtp_port: u16,
     pub stream: String,
@@ -140,7 +138,6 @@ impl Settings {
             token: lookup.get("POSTMARK_SERVER_TOKEN"),
             from: lookup.get("ORDER_EMAIL_FROM"),
             to: lookup.get("ORDER_EMAIL_TO"),
-            reply_to: lookup.get("ORDER_EMAIL_REPLY_TO"),
             smtp_host: lookup
                 .get("POSTMARK_SMTP_HOST")
                 .unwrap_or_else(|| "smtp.postmarkapp.com".into()),
@@ -253,7 +250,6 @@ mod tests {
                 ("ORDER_EMAIL_TO", "shop@example.com"),
                 ("POSTMARK_SMTP_PORT", "2525"),
                 ("ORDERS_PER_DAY", "50"),
-                ("ORDER_EMAIL_REPLY_TO", ""),
                 ("CONTACT_EMAIL_FROM", "support@example.com"),
                 ("CONTACT_EMAIL_TO", "support@example.com"),
                 ("MESSAGES_PER_HOUR", "5"),
@@ -269,7 +265,6 @@ mod tests {
         assert_eq!(settings.token.as_deref(), Some("secret"));
         assert_eq!(settings.smtp_port, 2525);
         assert_eq!(settings.per_day, 50);
-        assert_eq!(settings.reply_to, None);
         assert!(settings.missing().is_empty());
         assert_eq!(
             settings.contact_from.as_deref(),
