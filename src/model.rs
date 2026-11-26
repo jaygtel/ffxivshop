@@ -201,9 +201,9 @@ pub struct Item {
     /// the site doesn't take market prices for it from prices.json.
     #[serde(default = "yes")]
     pub auto_price: bool,
-    /// The lowest price shop-tools may set. Only shop-tools reads it.
+    /// The lowest price shop-tools may set. The live site (demo = false) needs
+    /// one for every item priced from the market.
     #[serde(default)]
-    #[allow(dead_code)]
     pub min_price: Option<u64>,
     /// The lowest price with the buyer's own materials that shop-tools may
     /// set. Only shop-tools reads it.
@@ -681,6 +681,13 @@ impl Shop {
                     "{at}: say when it will be ready, e.g. ready = \"2d\" (or set default_ready under [shop])"
                 ));
             }
+            // Until the market prices have a floor of their own, min_price is
+            // what stops them going below what an item costs to make.
+            if !self.shop.demo && item.auto_price && item.min_price.is_none() {
+                out.push(format!(
+                    "{at}: its price comes from the market, so it needs a min_price: what its materials cost, plus your margin (or set auto_price = false)"
+                ));
+            }
         }
 
         out
@@ -696,6 +703,19 @@ impl Shop {
                 "demo = true, so the page says it's a sample shop. Set demo = false under [shop] once your own details are in."
                     .to_string(),
             );
+        }
+        let unfloored: Vec<&str> = self
+            .items
+            .iter()
+            .filter(|item| self.shop.demo && item.auto_price && item.min_price.is_none())
+            .map(|item| item.name.as_str())
+            .collect();
+        if !unfloored.is_empty() {
+            out.push(format!(
+                "{} item(s) priced from the market have no min_price: {}. Give each one a min_price (what its materials cost, plus your margin) before setting demo = false.",
+                unfloored.len(),
+                unfloored.join(", ")
+            ));
         }
         let unlinked: Vec<&str> = self
             .items
@@ -933,6 +953,35 @@ mod tests {
         let typo = base.replacen("undercut = ", "undercutt = ", 1);
         let err = Shop::from_toml(&typo).unwrap_err();
         assert!(err.contains("undercutt"), "{err}");
+    }
+
+    #[test]
+    fn live_site_needs_min_prices() {
+        let demo = include_str!("../shop.toml");
+        let live = demo.replacen("demo = true", "demo = false", 1);
+        assert!(Shop::from_toml(&live).is_ok());
+
+        // The Rapier without its min_price: the live site stops, the demo
+        // builds with a warning.
+        let floor = "min_price = 82_300\n";
+        assert_eq!(demo.matches(floor).count(), 1);
+        let err = Shop::from_toml(&live.replacen(floor, "", 1)).unwrap_err();
+        assert!(err.contains("Courtly Lover's Rapier"), "{err}");
+        assert!(err.contains("min_price"), "{err}");
+        let shop = Shop::from_toml(&demo.replacen(floor, "", 1)).unwrap();
+        assert!(
+            shop.warnings()
+                .iter()
+                .any(|w| w.contains("min_price") && w.contains("Courtly Lover's Rapier")),
+            "{:?}",
+            shop.warnings()
+        );
+        let shop = Shop::from_toml(demo).unwrap();
+        assert!(!shop.warnings().iter().any(|w| w.contains("min_price")));
+
+        // Items that keep their written prices need none.
+        let kept = live.replacen(floor, "auto_price = false\n", 1);
+        assert!(Shop::from_toml(&kept).is_ok());
     }
 
     #[test]

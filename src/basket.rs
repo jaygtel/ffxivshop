@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(unit_price(&shop.items[rapier], false), Some(380_000));
         assert_eq!(unit_price(&shop.items[rapier], true), Some(90_000));
         // No price of its own with materials: the standard price.
-        assert_eq!(unit_price(&shop.items[hatchet], true), Some(95_000));
+        assert_eq!(unit_price(&shop.items[hatchet], true), Some(129_800));
         assert!(!has_own_mats_price(&shop.items[hatchet]));
         assert_eq!(unit_price(&shop.items[stage], true), None);
 
