@@ -1,16 +1,19 @@
 # The build check: builds the site, the prices service and the orders service
 # on GitHub for every pull request into main, the same way the server builds
 # them, so a change that doesn't build can't reach main. The "Protect main" ruleset only lets a pull request merge
-# once this check, "Build", has passed.
+# once this check, "Build", has passed. The Release workflow runs it too, on
+# the commit it's about to release.
 #
 # It only builds. Nothing is published and nothing is deployed: the server
-# still updates only when you run `docker compose up -d --build` there.
+# only runs published releases, which deploy/deploy.sh builds there.
 
 name: Build check
 
 on:
   pull_request:
     branches: [main]
+  # For the Release workflow.
+  workflow_call:
 
 # The check only reads the code.
 permissions:
@@ -18,7 +21,7 @@ permissions:
 
 # A newer push to the same pull request replaces a run that's still going.
 concurrency:
-  group: build-check-${{ github.event.pull_request.number }}
+  group: build-check-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -37,8 +40,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Builds the Dockerfile's "site" stage, as `docker compose up -d --build`
-      # does on the server, and keeps nothing: the image isn't saved or pushed.
+      # Builds the Dockerfile's "site" stage, as deploy.sh does on the server,
+      # and keeps nothing: the image isn't saved or pushed.
       #
       # Your real Discord name and email stay in the server's .env and never
       # come to GitHub, so this build uses stand-ins. They're only there
