@@ -52,11 +52,15 @@ updates:
     labels: ["area: tooling"]
     assignees: ["jaygtel"]
 
-  # The channel in rust-toolchain.toml.
+  # The channel in rust-toolchain.toml. It takes a new Rust version straight
+  # away, the same as the Rust image below, so the two always match.
   - package-ecosystem: rust-toolchain
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: rust-and-images
+    cooldown:
+      exclude: ["*"]
+    labels: ["area: tooling"]
 
   # The rust, nginx-unprivileged and debian images in the Dockerfile's FROM
   # lines, each pinned by digest: new versions, and new digests for the same
@@ -65,6 +69,20 @@ updates:
     directory: /
     patterns: ["*"]
     multi-ecosystem-group: rust-and-images
+    # Images are offered three days after they're pushed. The official images
+    # are pushed again every time they're rebuilt, so that wait could hold the
+    # newest Rust image back while rust-toolchain.toml moved on. The Rust image
+    # skips the wait; nginx and Debian keep it.
+    cooldown:
+      default-days: 3
+      exclude: ["rust"]
+    # nginx's odd minor versions (1.31, 1.33 and so on) are its mainline
+    # branch. The site stays on the stable branch, the even ones (1.30, 1.32
+    # and so on). Add the next odd version here when nginx reaches 1.40.
+    ignore:
+      - dependency-name: nginx/nginx-unprivileged
+        versions: ["~> 1.31.0", "~> 1.33.0", "~> 1.35.0", "~> 1.37.0", "~> 1.39.0"]
+    labels: ["area: tooling"]
 
   # The actions in .github/workflows, pinned to commits, with their version
   # in a comment beside each.
